@@ -36,7 +36,7 @@ const paramsWind = {
   style: muetStyle
 };
 
-var temposcale = new TempoScale(0,365);
+var temposcale = new TempoScale(0, 365);
 let params = paramsCovid;
 let controller = null;
 async function init() {
@@ -54,28 +54,25 @@ async function init() {
     false
   );
 
-  
   //Ajout d'une echelle temporelle
   addTempoScaleLabel();
   //Ajout des objects
   addObjects();
 }
 
-function dateToAlti(date){
-  let firstDate = Number(new Date(covidData[0]["date"]))/86400000;
-  let days = Number(new Date(date))/86400000 - firstDate;
-  return days*2
+function dateToAlti(date) {
+  let firstDate = Number(new Date(covidData[0]["date"])) / 86400000;
+  let days = Number(new Date(date)) / 86400000 - firstDate;
+  return days * 2;
 }
 
-function addTempoScaleLabel(){
-  
+function addTempoScaleLabel() {
   const loader = new THREE.FontLoader();
 
-  loader.load( 'fonts/helvetiker_regular.typeface.json', function ( font ) {
-  
-    var listdates = ["2020-03-19", "2020-04-19", "2020-05-19", "2020-06-19"]
-    for (let date in listdates){
-      const axegeometry = new THREE.TextGeometry( listdates[date]+'__', {
+  loader.load("fonts/helvetiker_regular.typeface.json", function(font) {
+    var listdates = ["2020-03-19", "2020-04-19", "2020-05-19", "2020-06-19"];
+    for (let date in listdates) {
+      const axegeometry = new THREE.TextGeometry(listdates[date] + "__", {
         font: font,
         size: 10,
         height: 5,
@@ -85,33 +82,39 @@ function addTempoScaleLabel(){
         bevelSize: 1,
         bevelOffset: 0,
         bevelSegments: 5
-      } );
+      });
 
-    var axematerial = new THREE.MeshStandardMaterial({ color: 0x000000 });
-    var axe = new THREE.Mesh(axegeometry, axematerial); //a three js mesh needs a geometry and a material
-    axe.position.x = -350;
-    axe.position.y = 0;
-    axe.position.z = dateToAlti(listdates[date])+3;
-    axe.rotation.set( Math.PI/2,0, 0);
-    console.log(axe);
-    axe.quaternion.copy(controller.threeViewer.currentCamera.quaternion);
-    controller.threeViewer.scene.add(axe); //all objects have to be added to the threejs scene
-    
-  }
-
-  } );
-  
+      var axematerial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+      var axe = new THREE.Mesh(axegeometry, axematerial); //a three js mesh needs a geometry and a material
+      axe.position.x = -350;
+      axe.position.y = 0;
+      axe.position.z = dateToAlti(listdates[date]) + 3;
+      axe.rotation.set(Math.PI / 2, 0, 0);
+      console.log(axe);
+      axe.quaternion.copy(controller.threeViewer.currentCamera.quaternion);
+      controller.threeViewer.scene.add(axe); //all objects have to be added to the threejs scene
+    }
+  });
 }
 
 const covidCaseGroup = new THREE.Group();
 covidCaseGroup.name = "covidCaseGroup";
 
 function addObjects() {
-  for (let covidCase in covidData){
-    if (dateToAlti(covidData[covidCase]["date"]) > temposcale.min && dateToAlti(covidData[covidCase]["date"]) < temposcale.max ){
+  for (let covidCase in covidData) {
+    if (
+      dateToAlti(covidData[covidCase]["date"]) > temposcale.min &&
+      dateToAlti(covidData[covidCase]["date"]) < temposcale.max
+    ) {
       //example to add an object to the scene
-      let tokenLatLon = [parseFloat(covidData[covidCase]["lat"]),parseFloat(covidData[covidCase]["lon"])];
-      let tokenCenter = proj4(proj4326, proj3857, [tokenLatLon[1], tokenLatLon[0]]);
+      let tokenLatLon = [
+        parseFloat(covidData[covidCase]["lat"]),
+        parseFloat(covidData[covidCase]["lon"])
+      ];
+      let tokenCenter = proj4(proj4326, proj3857, [
+        tokenLatLon[1],
+        tokenLatLon[0]
+      ]);
       let worldCoords = controller.threeViewer.getWorldCoords(tokenCenter); // the getWorldCoords function transform webmercator coordinates into three js world coordinates
       var geometry = new THREE.BoxBufferGeometry(5, 5, 5);
       var material = new THREE.MeshStandardMaterial({ color: 0xff4500 });
@@ -120,51 +123,57 @@ function addObjects() {
       cube.position.y = worldCoords[1];
       cube.position.z = dateToAlti(covidData[covidCase]["date"]);
       covidCaseGroup.add(cube); // all the cases are added to the group
-      
     }
   }
   controller.threeViewer.scene.add(covidCaseGroup); //the group is added to the scene
 }
 
-
-
 init();
 
 //Import d'un gui pour gerer l'echelle temporelle.
-const dat = require('dat.gui');
+const dat = require("dat.gui");
 const gui = new dat.GUI();
 
+const cubeFolder = gui.addFolder("Plage temporelle en jour depuis le 03-19");
+cubeFolder.add(temposcale, "min", 0, 364, 1);
+cubeFolder.add(temposcale, "max", 1, 365, 1);
+cubeFolder.open();
 
-const cubeFolder = gui.addFolder("Plage temporelle en jour depuis le 03-19")
-cubeFolder.add(temposcale, 'min', 0, 364, 1)
-cubeFolder.add(temposcale, 'max', 1, 365, 1)
-cubeFolder.open()
+function changeTempoScale() {
+  for (var elt in controller.threeViewer.scene.children) {
+    if (
+      (controller.threeViewer.scene.children[elt].name =
+        "covidCaseGroup" &&
+        controller.threeViewer.scene.children[elt].children.length > 2)
+    ) {
+      // Le groupe contenant les cas covid
 
-
-function changeTempoScale(){
-  
-  for(var elt in controller.threeViewer.scene.children){
-    if(controller.threeViewer.scene.children[elt].name = "covidCaseGroup" && controller.threeViewer.scene.children[elt].children.length>2){ // Le groupe contenant les cas covid
-      
-      for(var groupElt in controller.threeViewer.scene.children[elt].children){
-        if(controller.threeViewer.scene.children[elt].children[groupElt].position.z>temposcale.min && controller.threeViewer.scene.children[elt].children[groupElt].position.z<temposcale.max){
-          controller.threeViewer.scene.children[elt].children[groupElt].visible = true;
-        }
-        else{
-          controller.threeViewer.scene.children[elt].children[groupElt].visible = false;
+      for (var groupElt in controller.threeViewer.scene.children[elt]
+        .children) {
+        if (
+          controller.threeViewer.scene.children[elt].children[groupElt].position
+            .z > temposcale.min &&
+          controller.threeViewer.scene.children[elt].children[groupElt].position
+            .z < temposcale.max
+        ) {
+          controller.threeViewer.scene.children[elt].children[
+            groupElt
+          ].visible = true;
+        } else {
+          controller.threeViewer.scene.children[elt].children[
+            groupElt
+          ].visible = false;
         }
       }
-
     }
   }
-
 }
 
 gui.domElement.addEventListener("mouseup", changeTempoScale);
 
-function render(){
-  controller.threeViewer.animate();
-  requestAnimationFrame(render());
-};
+function render() {
+  controller.render();
+  requestAnimationFrame(render);
+}
 
 render();

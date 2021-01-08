@@ -64,7 +64,7 @@ export class VTController {
       });
     }
 
-    this.render();
+    //this.render();
   }
 
   render() {
@@ -76,7 +76,7 @@ export class VTController {
     }
 
     this.threeViewer.animate();
-    requestAnimationFrame(this.render);
+    //requestAnimationFrame(this.render);
   }
 
   loadVTile() {

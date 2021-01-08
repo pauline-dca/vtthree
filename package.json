@@ -9,6 +9,7 @@
   "license": "ISC",
   "dependencies": {
     "@turf/turf": "^5.1.6",
+    "dat.gui": "^0.7.7",
     "data": "^0.6.1",
     "geotiff": "^1.0.0-beta.16",
     "ol": "^6.5.0",
