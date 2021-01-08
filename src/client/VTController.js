@@ -64,7 +64,7 @@ export class VTController {
       });
     }
 
-    this.render();
+    //this.render();
   }
 
   render() {

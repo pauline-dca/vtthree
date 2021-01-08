@@ -121,8 +121,14 @@ function addObjects() {
   for (let covidCase in covidData){
     
       //example to add an object to the scene
-      let tokenLatLon = [parseFloat(covidData[covidCase]["lat"]),parseFloat(covidData[covidCase]["lon"])];
-      let tokenCenter = proj4(proj4326, proj3857, [tokenLatLon[1], tokenLatLon[0]]);
+      let tokenLatLon = [
+        parseFloat(covidData[covidCase]["lat"]),
+        parseFloat(covidData[covidCase]["lon"])
+      ];
+      let tokenCenter = proj4(proj4326, proj3857, [
+        tokenLatLon[1],
+        tokenLatLon[0]
+      ]);
       let worldCoords = controller.threeViewer.getWorldCoords(tokenCenter); // the getWorldCoords function transform webmercator coordinates into three js world coordinates
       var geometry = new THREE.BoxBufferGeometry(5, 5, 5);
       var material = new THREE.MeshStandardMaterial({ color: 0xff4500 });
@@ -137,12 +143,10 @@ function addObjects() {
   controller.threeViewer.scene.add(covidCaseGroup); //the group is added to the scene
 }
 
-
-
 init();
 
 //Import d'un gui pour gerer l'echelle temporelle.
-const dat = require('dat.gui');
+const dat = require("dat.gui");
 const gui = new dat.GUI();
 
 
