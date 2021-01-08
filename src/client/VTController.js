@@ -76,7 +76,7 @@ export class VTController {
     }
 
     this.threeViewer.animate();
-    requestAnimationFrame(this.render);
+    //requestAnimationFrame(this.render);
   }
 
   loadVTile() {
