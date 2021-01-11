@@ -23,8 +23,8 @@ let vavinCenter = proj4(proj4326, proj3857, [vavinLatLon[1], vavinLatLon[0]]);
 const paramsWind = {
   center: vavinCenter,
   zoom: 18,
-  //layers: ["bati_surf", "bati_zai"],
-  layers : [],
+  layers: ["bati_surf", "bati_zai"],
+  //layers : [],
   style: muetStyle
 };
 
@@ -51,8 +51,11 @@ function addObjects() {
     
     //Initial buffer geometries
 
-    var p = new THREE.CylinderBufferGeometry(0.2, 0.01);
-    var sphere = new SphereBufferGeometry(0.2, 10, 10);
+    var flowWidthTop = 0.1
+    var flowWidthBottom = 0.01
+
+    var p = new THREE.CylinderBufferGeometry(flowWidthTop, flowWidthBottom);
+    var sphere = new SphereBufferGeometry(flowWidthTop)
 
     // Some main parameters for the flows, to be modified depending on the context...
     var coef = 8;

@@ -43,10 +43,11 @@ for (let item of grid.features) {
     */
 
     //AJOUT NATHAN : VENT PSEUDO-RÉEL, LÉGÈREMENT INCLINÉ
-    let dirU = -4*Math.sin(alpha);
-    let dirV = 4*Math.cos(alpha);
+    let randomCoef = 2*Math.random() //permet de faire varier la vitesse tout en gardant la même direction
+    let dirU = randomCoef * -4*Math.sin(alpha);
+    let dirV = randomCoef * 4*Math.cos(alpha);
     alpha -= 5/grid.features.length;
-    let Z = Math.random()*5;
+    let Z = Math.random()*80;
 
     result.push({ lat: y, lon: x, z: Z, u: dirU, v: dirV });
   }

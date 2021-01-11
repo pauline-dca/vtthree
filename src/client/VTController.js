@@ -125,9 +125,9 @@ export class VTController {
           var deltaY = scale.y/100*Math.cos(Math.PI*2 - euler_rot.z);
         }*/
 
-
-        flow.position.x += deltaX;
-        flow.position.y += deltaY;
+        let divConst = 10 //a adapter suivant les situations, c'est à dire l'étendue des vitesses notamment. Doit être adapté avec la valeur de deltaX et deltaY aussi
+        flow.position.x += Math.log(scale.y)*deltaX;
+        flow.position.y += Math.log(scale.y)*deltaY;
 
         //OPACITY HANDLING (OPACITY = FUNCTION OF POSITION... STRANGELY ENOUGH)
         
