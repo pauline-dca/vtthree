@@ -42,7 +42,7 @@ export class VTController {
       center,
       ZOOM_RES_L93[zoom]
     );
-    /*this.olViewer = await new OLViewer(
+    this.olViewer = await new OLViewer(
       this.width,
       this.height,
       center,
@@ -69,7 +69,7 @@ export class VTController {
         console.log("wheeeel ");
         self.zoomOlViewer(event);
       });
-    }*/
+    }
     
 
     this.render();

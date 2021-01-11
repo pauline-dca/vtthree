@@ -24,8 +24,8 @@ let vavinCenter = proj4(proj4326, proj3857, [vavinLatLon[1], vavinLatLon[0]]);
 const paramsWind = {
   center: vavinCenter,
   zoom: 18,
-  //layers: ["bati_surf", "bati_zai"],
-  layers : [],
+  layers: ["bati_surf", "bati_zai"],
+  //layers : [],
   style: muetStyle
 };
 
@@ -61,7 +61,7 @@ function addObjects() {
     var sphere = new SphereBufferGeometry(flowWidthTop, 8, 6);
 
     // Some main parameters for the flows, to be modified depending on the context...
-    var coef = 8;
+    var coef = 5;
     var flowSize = coef*Math.sqrt(point.u**2 + point.v**2)
 
     //Rotation handling :
@@ -112,9 +112,6 @@ function addObjects() {
     sphereMesh.position.y = goodCoords[1] + coef*point.v/2;
     sphereMesh.position.z = point.z;
 
-    //mesh.name = "cylinder";
-    //sphereMesh.name = "head";
-
     var flow = new THREE.Group();
     flow.add(mesh);
     flow.add(sphereMesh);
@@ -124,9 +121,18 @@ function addObjects() {
 
     controller.threeViewer.scene.add(flow);
 
+    // TENTATIVE : RELIER LES UNS POINTS LES UNS AUX AUTRES
+
+    var length = new THREE.Vector3();
+    mesh.getWorldScale(length);
+
+    
+
+
   }); 
 
   //TESTS WITH CURVES
+  /*
 
   const curveHandles = [];
 
@@ -137,14 +143,6 @@ function addObjects() {
   ];
 
   /*
-  for (var i = 0; i < 20; i++){
-    var currentVertex = windData[i];
-    var cooWebMerca = proj4(proj4326, proj3857, [currentVertex.lon, currentVertex.lat]);
-    var goodCoords = controller.threeViewer.getWorldCoords(cooWebMerca);
-
-    lstCurve.push(new THREE.Vector3(goodCoords[0] + i, goodCoords[1]/i, i));
-
-  }*/
 
   const boxGeometry = new THREE.BoxBufferGeometry( 0.1, 0.1, 0.1 );
   const boxMaterial = new THREE.MeshBasicMaterial();
@@ -184,7 +182,9 @@ function addObjects() {
   controller.threeViewer.scene.add(flowLine.object3D);
 
   return flowLine;
+  */
 
+  return null;
 }
 
 init();
