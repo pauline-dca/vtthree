@@ -70,10 +70,10 @@ export class VTController {
     }
     
 
-    this.render(false);
+    this.render();
   }
 
-  render(visible) {
+  render() {
     if (this.tileZoom && this.state.loading != 0) {
       console.log("render ol!");
       var mapContainer = document.getElementById("map");
@@ -140,38 +140,12 @@ export class VTController {
           flow.children[0].material.opacity = 1.05 - (currentDistanceFromInit - scale.y/2)/(scale.y/2)
           flow.children[1].material.opacity = 1.05 - (currentDistanceFromInit - scale.y/2)/(scale.y/2)
         }
-
-
-
-        /*
-        if (!visible){
-          flow.children[0].material.opacity += 0.05;
-          flow.children[1].material.opacity += 0.05;
-          
-        }
-        else{
-          flow.children[0].material.opacity -= 0.05;
-          flow.children[1].material.opacity -= 0.05;
-          
-        }
-
-        if (flow.children[0].material.opacity <= 0.05 || flow.children[1].material.opacity <= 0.05){
-          flow.children[0].material.opacity = 0.05;
-          flow.children[1].material.opacity = 0.05;
-          visible = false;
-        }
-        if (flow.children[0].material.opacity >= 1 || flow.children[1].material.opacity >= 1){
-          flow.children[0].material.opacity = 1;
-          flow.children[1].material.opacity = 1;
-          visible = true;
-          
-        }*/
       }
     });
 
     this.threeViewer.animate();
     requestAnimationFrame(function() {
-      this.render(visible);
+      this.render();
     }.bind(this)); 
   }
 
