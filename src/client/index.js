@@ -6,6 +6,7 @@ import { mergedRender, singleRender } from "./VTThreeViewer";
 import { planStyle, grisStyle, muetStyle } from "./OLViewer";
 import proj4 from "proj4";
 import { proj4326, proj3857 } from "./Utils";
+import { Flow } from "three/examples/jsm/modifiers/CurveModifier.js";
 
 //data can be imported like this or read from the data folder
 import windData from "../../data/wind.json";
@@ -23,8 +24,8 @@ let vavinCenter = proj4(proj4326, proj3857, [vavinLatLon[1], vavinLatLon[0]]);
 const paramsWind = {
   center: vavinCenter,
   zoom: 18,
-  layers: ["bati_surf", "bati_zai"],
-  //layers : [],
+  //layers: ["bati_surf", "bati_zai"],
+  layers : [],
   style: muetStyle
 };
 
@@ -40,9 +41,11 @@ async function init() {
     params.layers, //layers to be rendered as 3D features
     mergedRender, //render type, merged render more efficient but does not provide access to each feature
     params.style, //style for the tiles
-    false
+    false,
+    null
   );
-  addObjects();
+  var flowLine = addObjects();
+  controller.flowLine = flowLine;
 }
 
 function addObjects() {
@@ -51,11 +54,11 @@ function addObjects() {
     
     //Initial buffer geometries
 
-    var flowWidthTop = 0.1
+    var flowWidthTop = 0.2
     var flowWidthBottom = 0.01
 
     var p = new THREE.CylinderBufferGeometry(flowWidthTop, flowWidthBottom);
-    var sphere = new SphereBufferGeometry(flowWidthTop)
+    var sphere = new SphereBufferGeometry(flowWidthTop, 8, 6);
 
     // Some main parameters for the flows, to be modified depending on the context...
     var coef = 8;
@@ -120,11 +123,67 @@ function addObjects() {
     flow.initPosY = goodCoords[1];
 
     controller.threeViewer.scene.add(flow);
-  
-    
-
 
   }); 
+
+  //TESTS WITH CURVES
+
+  const curveHandles = [];
+
+  var lstCurve = [
+    { x: 50, y: -800, z: 120 },
+    { x: 0, y: 0, z: 120 },
+    { x: -200, y: 200, z: 120 },
+  ];
+
+  /*
+  for (var i = 0; i < 20; i++){
+    var currentVertex = windData[i];
+    var cooWebMerca = proj4(proj4326, proj3857, [currentVertex.lon, currentVertex.lat]);
+    var goodCoords = controller.threeViewer.getWorldCoords(cooWebMerca);
+
+    lstCurve.push(new THREE.Vector3(goodCoords[0] + i, goodCoords[1]/i, i));
+
+  }*/
+
+  const boxGeometry = new THREE.BoxBufferGeometry( 0.1, 0.1, 0.1 );
+  const boxMaterial = new THREE.MeshBasicMaterial();
+
+  for ( const handlePos of lstCurve ) {
+
+    const handle = new THREE.Mesh( boxGeometry, boxMaterial );
+    handle.position.copy( handlePos );
+    curveHandles.push( handle );
+    controller.threeViewer.scene.add( handle );
+
+  }
+  const curve = new THREE.CatmullRomCurve3(curveHandles.map((handle) => handle.position));
+  curve.curveType = "centripetal";
+  //curve.closed = true;
+
+  const points = curve.getPoints( 50 );
+  const line = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints( points ),
+    new THREE.LineBasicMaterial({color: "black"})
+  );
+
+  controller.threeViewer.scene.add( line );
+
+  //geometry to be placed along the curve
+  //var rect = new THREE.SphereBufferGeometry(5,8,6);
+
+  var rect = new THREE.CylinderBufferGeometry(0.3, 0.02, 100);
+  //rect.rotateY(-Math.PI/2);
+
+  const objectToCurve = new THREE.Mesh(rect, new THREE.MeshStandardMaterial({color: 0x99ffff}));
+  objectToCurve.name = "toBeMoved";
+  const flowLine = new Flow(objectToCurve);
+
+  flowLine.updateCurve(0, curve);
+  flowLine.name = "curve";
+  controller.threeViewer.scene.add(flowLine.object3D);
+
+  return flowLine;
 
 }
 

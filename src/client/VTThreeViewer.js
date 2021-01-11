@@ -293,11 +293,14 @@ export class VTThreeViewer {
     this.rayCaster.setFromCamera(new THREE.Vector2(x, y), this.currentCamera);
     var intersects = this.rayCaster.intersectObjects(this.planes.children);
     console.log(intersects);
+    var xShow = intersects[0].point.x * this.zoomFactor + this.mapCenter[0]
+    var yShow = intersects[0].point.y * this.zoomFactor + this.mapCenter[1]
     console.log(
       "point",
-      intersects[0].point.x * this.zoomFactor + this.mapCenter[0],
+      xShow,
       " ",
-      intersects[0].point.y * this.zoomFactor + this.mapCenter[1]
+      yShow,
     );
+    this.currentCamera.position.set(intersects[0].point.x, intersects[0].point.y, 80);
   }
 }

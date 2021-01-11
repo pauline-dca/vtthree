@@ -16,7 +16,8 @@ export class VTController {
     layers,
     renderMode,
     style,
-    tileZoom
+    tileZoom,
+    flowLine
   ) {
     this.width = width;
     this.height = height;
@@ -29,6 +30,7 @@ export class VTController {
     this.init(center, zoom, renderMode, style, tileZoom);
     this.state = { loading: 0 };
     this.tileZoom = tileZoom;
+    this.flowLine = flowLine;
   }
 
   async init(center, zoom, renderMode, style, tileZoom) {
@@ -40,7 +42,7 @@ export class VTController {
       center,
       ZOOM_RES_L93[zoom]
     );
-    this.olViewer = await new OLViewer(
+    /*this.olViewer = await new OLViewer(
       this.width,
       this.height,
       center,
@@ -67,7 +69,7 @@ export class VTController {
         console.log("wheeeel ");
         self.zoomOlViewer(event);
       });
-    }
+    }*/
     
 
     this.render();
@@ -125,9 +127,10 @@ export class VTController {
           var deltaY = scale.y/100*Math.cos(Math.PI*2 - euler_rot.z);
         }*/
 
-        let divConst = 10 //a adapter suivant les situations, c'est à dire l'étendue des vitesses notamment. Doit être adapté avec la valeur de deltaX et deltaY aussi
-        flow.position.x += Math.log(scale.y)*deltaX;
-        flow.position.y += Math.log(scale.y)*deltaY;
+        //on utilise le log10(scale.y) pour adapter la vitesse de déplacement du flux à la vitesse réelle du vent tout en pondérant par le log
+        //pour éviter de trop gros écarts de vitesses et une visualisation anarchique
+        flow.position.x += Math.log10(scale.y)*deltaX;
+        flow.position.y += Math.log10(scale.y)*deltaY;
 
         //OPACITY HANDLING (OPACITY = FUNCTION OF POSITION... STRANGELY ENOUGH)
         
@@ -142,6 +145,13 @@ export class VTController {
         }
       }
     });
+
+    if (this.flowLine){
+      this.flowLine.moveAlongCurve(0.01);
+    }
+
+
+
 
     this.threeViewer.animate();
     requestAnimationFrame(function() {
