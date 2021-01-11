@@ -3,6 +3,10 @@ import * as THREE from "three";
 import { OLViewer, IGN_STYLES } from "./OLViewer";
 import Feature from "ol/Feature";
 import { ZOOM_RES_L93 } from "./Utils";
+import { Euler, Vector3 } from "three";
+import { distance } from "@turf/turf";
+
+
 export class VTController {
   constructor(
     width,
@@ -31,7 +35,7 @@ export class VTController {
     this.threeViewer = new VTThreeViewer(
       this.width,
       this.height,
-      0xffffff,
+      "white",
       !tileZoom,
       center,
       ZOOM_RES_L93[zoom]
@@ -51,6 +55,7 @@ export class VTController {
       self.threeViewer.setPlaneTexture(mapCanvas);
     });
 
+    
     this.olViewer.layer.getSource().on("tileloadstart", function(evt) {
       self.state.loading++;
     });
@@ -63,11 +68,12 @@ export class VTController {
         self.zoomOlViewer(event);
       });
     }
+    
 
-    this.render();
+    this.render(false);
   }
 
-  render() {
+  render(visible) {
     if (this.tileZoom && this.state.loading != 0) {
       console.log("render ol!");
       var mapContainer = document.getElementById("map");
@@ -75,8 +81,98 @@ export class VTController {
       this.threeViewer.setPlaneTexture(mapCanvas);
     }
 
+    //PLACING & ANIMATING FLOWS
+    this.threeViewer.scene.traverse (function (flow){
+      if (flow.name == "flow"){
+
+        //NECESSARY LOCAL VARIABLES
+        var cylinder = flow.children[0];
+
+        var quaternion = new THREE.Quaternion();
+        cylinder.getWorldQuaternion(quaternion);
+        var euler_rot = new THREE.Euler().setFromQuaternion(quaternion);
+
+        var scale = new THREE.Vector3();
+        cylinder.getWorldScale(scale);
+
+        //RESETING POSITION IF NECESSARY
+
+        var currentDistanceFromInit = Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2);
+        if (currentDistanceFromInit >= scale.y){
+          flow.position.x = flow.initPosX;
+          flow.position.y = flow.initPosY;
+          currentDistanceFromInit = 0;
+        }
+
+        
+        
+        //MOVEMENT HANDLING
+        if (0 < euler_rot.z < Math.PI/2){ //quart haut gauche dessin donc HAUT DROIT cercle trigo
+          var deltaX = -scale.y/50*Math.sin(euler_rot.z);
+          var deltaY = scale.y/50*Math.cos(euler_rot.z);
+        }
+        /*
+        else if (Math.PI/2 < euler_rot.z < Math.PI){ //quart bas gauche dessin donc HAUT GAUCHE cercle trigo
+          var deltaX = -scale.y/100*Math.cos(euler_rot.z - Math.PI/2);
+          var deltaY = scale.y/100*Math.sin(euler_rot.z - Math.PI/2);
+        }
+        else if (Math.PI < euler_rot.z < 3*Math.PI/2){ //BAS GAUCHE cercle trigo
+          var deltaX = scale.y/100*Math.sin(euler_rot.z - Math.PI);
+          var deltaY = -scale.y/100*Math.cos(euler_rot.z - Math.PI);
+        }
+        else{ //BAS DROIT cercle trigo
+          var deltaX = scale.y/100*Math.sin(Math.PI*2 - euler_rot.z);
+          var deltaY = scale.y/100*Math.cos(Math.PI*2 - euler_rot.z);
+        }*/
+
+
+        flow.position.x += deltaX;
+        flow.position.y += deltaY;
+
+        //OPACITY HANDLING (OPACITY = FUNCTION OF POSITION... STRANGELY ENOUGH)
+        
+        if (currentDistanceFromInit < scale.y/2){ //phase ascendante d'opacité
+          flow.children[0].material.opacity = 1.05 + (currentDistanceFromInit - scale.y/2)/(scale.y/2)
+          flow.children[1].material.opacity = 1.05 + (currentDistanceFromInit - scale.y/2)/(scale.y/2)
+
+        }
+        else{ //phase descendante d'opacité
+          flow.children[0].material.opacity = 1.05 - (currentDistanceFromInit - scale.y/2)/(scale.y/2)
+          flow.children[1].material.opacity = 1.05 - (currentDistanceFromInit - scale.y/2)/(scale.y/2)
+        }
+
+
+
+        /*
+        if (!visible){
+          flow.children[0].material.opacity += 0.05;
+          flow.children[1].material.opacity += 0.05;
+          
+        }
+        else{
+          flow.children[0].material.opacity -= 0.05;
+          flow.children[1].material.opacity -= 0.05;
+          
+        }
+
+        if (flow.children[0].material.opacity <= 0.05 || flow.children[1].material.opacity <= 0.05){
+          flow.children[0].material.opacity = 0.05;
+          flow.children[1].material.opacity = 0.05;
+          visible = false;
+        }
+        if (flow.children[0].material.opacity >= 1 || flow.children[1].material.opacity >= 1){
+          flow.children[0].material.opacity = 1;
+          flow.children[1].material.opacity = 1;
+          visible = true;
+          
+        }*/
+      }
+    });
+
     this.threeViewer.animate();
-    requestAnimationFrame(this.render);
+    requestAnimationFrame(function() {
+      this.render(visible);
+    }.bind(this)); 
   }
 
   loadVTile() {

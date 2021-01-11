@@ -18,25 +18,39 @@ var geometry = {
   ]
 };
 
+
 result = [];
 var feature = turf.feature(geometry);
 var options = { units: "kilometers" };
 let grid = turf.squareGrid(turf.bbox(feature), 0.0025, options);
+
+//AJOUT NATHAN POUR VENT PSEUDO-REEL LÉGÈREMENT INCLINÉ
+let alpha = Math.PI/2
+
 for (let item of grid.features) {
   if (turf.booleanContains(feature, item)) {
     let bbox = turf.bbox(item);
     let x = (bbox[2] + bbox[0]) / 2;
     let y = (bbox[3] + bbox[1]) / 2;
-    result.push({ lat: y, lon: x, z: 0, u: 0.25, v: 1 });
-  }
-}
 
-let newResult = [];
-for (z = 0; z <= 4; z++) {
-  for (let item of result) {
-    newResult.push({ lat: item.lat, lon: item.lon, z: z, u: 0.25, v: 1 });
+    //AJOUT NATHAN : RANDOMLY PRODUCED DIRECTION
+    /*
+    let randomDirU = Math.random() < 0.5 ? -1 : 1;
+    let randomDirV = Math.random() < 0.5 ? -1 : 1;
+    let randomU = randomDirU * Math.random()*5;
+    let randomV = randomDirV * Math.random()*5;
+    let randomZ = Math.random()*10;
+    */
+
+    //AJOUT NATHAN : VENT PSEUDO-RÉEL, LÉGÈREMENT INCLINÉ
+    let dirU = -4*Math.sin(alpha);
+    let dirV = 4*Math.cos(alpha);
+    alpha -= 5/grid.features.length;
+    let Z = Math.random()*5;
+
+    result.push({ lat: y, lon: x, z: Z, u: dirU, v: dirV });
   }
 }
 
 console.log(result);
-fs.writeFileSync("data/wind.json", JSON.stringify(newResult));
+fs.writeFileSync("data/wind.json", JSON.stringify(result));

@@ -20,11 +20,20 @@
     "turf": "^3.0.14"
   },
   "devDependencies": {
+    "parcel": "^1.12.4",
     "parcel-plugin-static-files-copy": "^2.5.0"
   },
   "staticFiles": {
     "staticPath": "data",
     "watcherGlob": "**"
   },
-  "description": ""
+  "description": "## Installing - if you don't have them  1. Install node: https://nodejs.org/en/ 2. Install git: https://git-scm.com/downloads 3. Install Visual Studio Code (optional, but recommended): https://code.visualstudio.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/umrlastig/vtthree.git"
+  },
+  "bugs": {
+    "url": "https://github.com/umrlastig/vtthree/issues"
+  },
+  "homepage": "https://github.com/umrlastig/vtthree#readme"
 }
