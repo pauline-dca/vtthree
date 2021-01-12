@@ -286,21 +286,84 @@ export class VTThreeViewer {
     floor.position.set(0, 0, 0);
   }
 
+  dist(x1, y1, x2, y2){
+    //console.log(Math.sqrt((x1 - x2)**2 + (y1 - y2)**2))
+    return Math.sqrt((x1 - x2)**2 + (y1 - y2)**2);
+    
+  }
+
   doubleClick(event) {
     let x = (event.clientX / window.innerWidth) * 2 - 1;
     let y = -(event.clientY / window.innerHeight) * 2 + 1;
     let self = this;
     this.rayCaster.setFromCamera(new THREE.Vector2(x, y), this.currentCamera);
     var intersects = this.rayCaster.intersectObjects(this.planes.children);
-    console.log(intersects);
-    var xShow = intersects[0].point.x * this.zoomFactor + this.mapCenter[0]
-    var yShow = intersects[0].point.y * this.zoomFactor + this.mapCenter[1]
-    console.log(
-      "point",
-      xShow,
-      " ",
-      yShow,
-    );
-    this.currentCamera.position.set(intersects[0].point.x, intersects[0].point.y, 80);
+
+    //var xShow = intersects[0].point.x * this.zoomFactor + this.mapCenter[0]
+    //var yShow = intersects[0].point.y * this.zoomFactor + this.mapCenter[1]
+    //console.log("point",xShow," ",yShow,);
+    //this.currentCamera.position.set(intersects[0].point.x, intersects[0].point.y, 80);
+
+    //AJOUT NATHAN : INTERPOLATION À LA VOLÉE POUR DONNER UNE VALEUR PRÉCISE DE VITESSE DE VENT EN TOUT POINT DE L'ESPACE
+    var xLocal = intersects[0].point.x;
+    var yLocal = intersects[0].point.y;
+
+    /*for ( let i = 0; i < intersects.length; i ++ ) {
+
+      intersects[ i ].object.material.color.set( 0xff0000 );
+  
+    }*/
+
+    var lstFrame = [];
+
+    this.scene.children.forEach(function(elem){
+
+      //console.log(elem);
+      if (elem.name == "flow"){
+        var gap = this.dist(elem.initPosX, elem.initPosY, xLocal, yLocal);
+        if (lstFrame.length < 4){
+          var point = {distance : gap, speedX: elem.speedX, speedY: elem.speedY, elem: elem};
+          lstFrame.push(point);
+          lstFrame.sort(function(point1, point2){ //sort DESCENDINGLY the array according to the distance item of the objects within
+            return point1.distance > point2.distance ? -1 : 1 //put highest distances at the beginning
+          });
+        }
+        else{
+          for (var i = 0; i < 4; i++){
+            if (lstFrame[i].distance > gap){ //we found a closer point
+              lstFrame[i] = {distance: gap, speedX: elem.speedX, speedY: elem.speedY, elem : elem}; //replacing the furthest point
+              lstFrame.sort(function(point1, point2){ //sorting again the array, each time a closer point is found
+                return point1.distance > point2.distance ? -1 : 1;
+              });
+              
+              break; //leaving so as to avoid replacing more than one point
+            }
+          }
+        }
+      }
+    }.bind(this));
+
+
+    lstFrame[0].elem.children[0].material.color.set("red");
+    lstFrame[1].elem.children[0].material.color.set("red");
+    lstFrame[2].elem.children[0].material.color.set("red");
+    lstFrame[3].elem.children[0].material.color.set("red");
+    
+    var clickSpeedX = (lstFrame[0].distance*lstFrame[0].speedX + 
+      lstFrame[1].distance*lstFrame[1].speedX +
+      lstFrame[2].distance*lstFrame[2].speedX +
+      lstFrame[3].distance*lstFrame[3].speedX) /
+      (lstFrame[0].distance + lstFrame[1].distance + lstFrame[2].distance + lstFrame[3].distance);
+
+    var clickSpeedY = (lstFrame[0].distance*lstFrame[0].speedY + 
+      lstFrame[1].distance*lstFrame[1].speedY +
+      lstFrame[2].distance*lstFrame[2].speedY +
+      lstFrame[3].distance*lstFrame[3].speedY) /
+      (lstFrame[0].distance + lstFrame[1].distance + lstFrame[2].distance + lstFrame[3].distance);
+
+    console.log(clickSpeedX, clickSpeedY);
+
+
+
   }
 }

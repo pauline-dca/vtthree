@@ -76,7 +76,7 @@ function addObjects() {
       }
       else{
         //quart bas droit
-        var m = new THREE.MeshStandardMaterial({color : "red",  opacity: 1, transparent: true});
+        var m = new THREE.MeshStandardMaterial({color : "black",  opacity: 1, transparent: true});
         var mesh = new THREE.Mesh(p, m);
         mesh.applyMatrix4(new Matrix4().makeScale(1, flowSize, 1));
         mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), - Math.atan(point.u/point.v) - Math.PI);
@@ -85,14 +85,14 @@ function addObjects() {
     else{
       if (point.v >= 0){
         //quart haut gauche
-        var m = new THREE.MeshStandardMaterial({color : "green",  opacity: 1, transparent: true});
+        var m = new THREE.MeshStandardMaterial({color : "black",  opacity: 1, transparent: true});
         var mesh = new THREE.Mesh(p, m);
         mesh.applyMatrix4(new Matrix4().makeScale(1, flowSize, 1));
         mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.atan(point.v/point.u) + Math.PI/2);
       }
       else{
         //quart bas gauche
-        var m = new THREE.MeshStandardMaterial({color : "blue",  opacity: 1, transparent: true});
+        var m = new THREE.MeshStandardMaterial({color : "black",  opacity: 1, transparent: true});
         var mesh = new THREE.Mesh(p, m);
         mesh.applyMatrix4(new Matrix4().makeScale(1, flowSize, 1));
         mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.PI/2 + Math.atan(point.v/point.u));
@@ -118,6 +118,8 @@ function addObjects() {
     flow.name = "flow";
     flow.initPosX = goodCoords[0];
     flow.initPosY = goodCoords[1];
+    flow.speedX = point.u;
+    flow.speedY = point.v;
 
     controller.threeViewer.scene.add(flow);
 
