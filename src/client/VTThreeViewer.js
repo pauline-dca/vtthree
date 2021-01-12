@@ -307,10 +307,11 @@ export class VTThreeViewer {
     var xLocal = intersects[0].point.x;
     var yLocal = intersects[0].point.y;
 
+    /* debug objects
     var newObj = new THREE.Mesh(new BoxBufferGeometry(20, 20, 20), new MeshStandardMaterial());
     newObj.position.x = xLocal;
     newObj.position.y = yLocal;
-    this.scene.add(newObj);
+    this.scene.add(newObj);*/
 
     /*for ( let i = 0; i < intersects.length; i ++ ) {
 
@@ -319,18 +320,18 @@ export class VTThreeViewer {
     }*/
 
     var lstFrame = [];
-    var cpt = 0
 
     this.scene.children.forEach(function(elem){
-      cpt += 1
 
       //console.log(elem);
       if (elem.name == "flow"){
         var gap = this.dist(elem.initPosX, elem.initPosY, xLocal, yLocal);
+        /* debug objects
         var newObj2 = new THREE.Mesh(new BoxBufferGeometry(5, 5, 5), new MeshStandardMaterial());
         newObj2.position.x = elem.initPosX;
         newObj2.position.y = elem.initPosY;
         this.scene.add(newObj2);
+        */
         if (lstFrame.length < 4){
           var point = {distance : gap, speedX: elem.speedX, speedY: elem.speedY, elem: elem};
           lstFrame.push(point);
@@ -341,8 +342,8 @@ export class VTThreeViewer {
         else{
           for (var i = 0; i < 4; i++){
             if (lstFrame[i].distance > gap){ //we found a closer point
-              console.log(i, lstFrame[0].distance, lstFrame[1].distance, lstFrame[2].distance, lstFrame[3].distance, gap);
-              newObj2.material.color.set("green");
+              //console.log(i, lstFrame[0].distance, lstFrame[1].distance, lstFrame[2].distance, lstFrame[3].distance, gap);
+              //newObj2.material.color.set("green");
               lstFrame[i] = {distance: gap, speedX: elem.speedX, speedY: elem.speedY, elem : elem}; //replacing the furthest point
               lstFrame.sort(function(point1, point2){ //sorting again the array, each time a closer point is found
                 return point1.distance > point2.distance ? -1 : 1;
@@ -355,7 +356,6 @@ export class VTThreeViewer {
       }
     }.bind(this));
 
-    console.log(cpt);
     lstFrame[0].elem.children[0].material.color.set("red");
     lstFrame[1].elem.children[0].material.color.set("red");
     lstFrame[2].elem.children[0].material.color.set("red");
@@ -373,7 +373,7 @@ export class VTThreeViewer {
       lstFrame[3].distance*lstFrame[3].speedY) /
       (lstFrame[0].distance + lstFrame[1].distance + lstFrame[2].distance + lstFrame[3].distance);
 
-    console.log(clickSpeedX, clickSpeedY);
+    console.log("Vitesse ponctuelle en X (lon) : ", clickSpeedX, "Vitesse ponctuelle en Y (lat) : ",clickSpeedY);
 
 
 

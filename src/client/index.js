@@ -24,8 +24,8 @@ let vavinCenter = proj4(proj4326, proj3857, [vavinLatLon[1], vavinLatLon[0]]);
 const paramsWind = {
   center: vavinCenter,
   zoom: 18,
-  //layers: ["bati_surf", "bati_zai"],
-  layers : [],
+  layers: ["bati_surf", "bati_zai"],
+  //layers : [],
   style: muetStyle
 };
 
