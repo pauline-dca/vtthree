@@ -42,7 +42,7 @@ export class VTController {
       center,
       ZOOM_RES_L93[zoom]
     );
-    this.olViewer = await new OLViewer(
+    /*this.olViewer = await new OLViewer(
       this.width,
       this.height,
       center,
@@ -69,7 +69,7 @@ export class VTController {
         console.log("wheeeel ");
         self.zoomOlViewer(event);
       });
-    }
+    }*/
     
 
     this.render();
@@ -96,11 +96,18 @@ export class VTController {
 
         var scale = new THREE.Vector3();
         cylinder.getWorldScale(scale);
+        //console.log(flow.position.x, flow.position.y);
+        //console.log(scale.y)
 
         //RESETING POSITION IF NECESSARY
-
+        
         var currentDistanceFromInit = Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2);
         if (currentDistanceFromInit >= scale.y){
+          /*
+          console.log(flow.initPosX, flow.initPosY);
+          console.log(flow.position.x, flow.position.y);
+          console.log(scale.y);
+          console.log(Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2));*/
           flow.position.x = flow.initPosX;
           flow.position.y = flow.initPosY;
           currentDistanceFromInit = 0;
@@ -109,6 +116,7 @@ export class VTController {
         
         
         //MOVEMENT HANDLING
+        
         if (0 < euler_rot.z < Math.PI/2){ //quart haut gauche dessin donc HAUT DROIT cercle trigo
           var deltaX = -scale.y/50*Math.sin(euler_rot.z);
           var deltaY = scale.y/50*Math.cos(euler_rot.z);
@@ -136,12 +144,12 @@ export class VTController {
         
         if (currentDistanceFromInit < scale.y/2){ //phase ascendante d'opacité
           flow.children[0].material.opacity = 1.05 + (currentDistanceFromInit - scale.y/2)/(scale.y/2)
-          flow.children[1].material.opacity = 1.05 + (currentDistanceFromInit - scale.y/2)/(scale.y/2)
+          //flow.children[1].material.opacity = 1.05 + (currentDistanceFromInit - scale.y/2)/(scale.y/2)
 
         }
         else{ //phase descendante d'opacité
           flow.children[0].material.opacity = 1.05 - (currentDistanceFromInit - scale.y/2)/(scale.y/2)
-          flow.children[1].material.opacity = 1.05 - (currentDistanceFromInit - scale.y/2)/(scale.y/2)
+          //flow.children[1].material.opacity = 1.05 - (currentDistanceFromInit - scale.y/2)/(scale.y/2)
         }
       }
     });

@@ -36,7 +36,8 @@ for (let item of grid.features) {
     let y = (bbox[3] + bbox[1]) / 2;
 
     //AJOUT NATHAN : VENT PSEUDO-RÉEL, LÉGÈREMENT INCLINÉ
-    let Z = 5 + Math.random()*80; //on utilise la hauteur pour
+    //let Z = 5 + Math.random()*80; //on utilise la hauteur pour
+    let Z = 0
     //let randomCoef = 3*Math.random() //permet de faire varier la vitesse tout en gardant la même direction, et en fonction de la hauteur (pour l'exemple)
     let randomCoef = Math.log10(i);
     let dirU = randomCoef * -4*Math.sin(alpha);

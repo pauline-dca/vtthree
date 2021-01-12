@@ -24,8 +24,8 @@ let vavinCenter = proj4(proj4326, proj3857, [vavinLatLon[1], vavinLatLon[0]]);
 const paramsWind = {
   center: vavinCenter,
   zoom: 18,
-  layers: ["bati_surf", "bati_zai"],
-  //layers : [],
+  //layers: ["bati_surf", "bati_zai"],
+  layers : [],
   style: muetStyle
 };
 
@@ -58,7 +58,7 @@ function addObjects() {
     var flowWidthBottom = 0.01
 
     var p = new THREE.CylinderBufferGeometry(flowWidthTop, flowWidthBottom);
-    var sphere = new SphereBufferGeometry(flowWidthTop, 8, 6);
+    //var sphere = new SphereBufferGeometry(flowWidthTop, 8, 6);
 
     // Some main parameters for the flows, to be modified depending on the context...
     var coef = 5;
@@ -99,25 +99,28 @@ function addObjects() {
       }
     }
 
-    var sphereMesh = new THREE.Mesh(sphere, m)
+    //var sphereMesh = new THREE.Mesh(sphere, m)
 
     //Postionning the objects
     var cooWebMerca = proj4(proj4326, proj3857, [point.lon, point.lat]);
     var goodCoords = controller.threeViewer.getWorldCoords(cooWebMerca);
 
+    /*
     mesh.position.x = goodCoords[0];
     mesh.position.y = goodCoords[1];
     mesh.position.z = point.z;
     sphereMesh.position.x = goodCoords[0] + coef*point.u/2;
     sphereMesh.position.y = goodCoords[1] + coef*point.v/2;
-    sphereMesh.position.z = point.z;
+    sphereMesh.position.z = point.z;*/
 
     var flow = new THREE.Group();
     flow.add(mesh);
-    flow.add(sphereMesh);
+    //flow.add(sphereMesh);
     flow.name = "flow";
     flow.initPosX = goodCoords[0];
     flow.initPosY = goodCoords[1];
+    flow.position.x = goodCoords[0];
+    flow.position.y = goodCoords[1];
     flow.speedX = point.u;
     flow.speedY = point.v;
 

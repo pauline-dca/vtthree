@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { ZOOM_RES_L93 } from "./Utils";
 import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils";
+import { BoxBufferGeometry, MeshStandardMaterial } from "three";
 
 export const mergedRender = "Merged";
 export const singleRender = "Single";
@@ -301,12 +302,15 @@ export class VTThreeViewer {
 
     //var xShow = intersects[0].point.x * this.zoomFactor + this.mapCenter[0]
     //var yShow = intersects[0].point.y * this.zoomFactor + this.mapCenter[1]
-    //console.log("point",xShow," ",yShow,);
-    //this.currentCamera.position.set(intersects[0].point.x, intersects[0].point.y, 80);
 
     //AJOUT NATHAN : INTERPOLATION À LA VOLÉE POUR DONNER UNE VALEUR PRÉCISE DE VITESSE DE VENT EN TOUT POINT DE L'ESPACE
     var xLocal = intersects[0].point.x;
     var yLocal = intersects[0].point.y;
+
+    var newObj = new THREE.Mesh(new BoxBufferGeometry(20, 20, 20), new MeshStandardMaterial());
+    newObj.position.x = xLocal;
+    newObj.position.y = yLocal;
+    this.scene.add(newObj);
 
     /*for ( let i = 0; i < intersects.length; i ++ ) {
 
@@ -315,12 +319,18 @@ export class VTThreeViewer {
     }*/
 
     var lstFrame = [];
+    var cpt = 0
 
     this.scene.children.forEach(function(elem){
+      cpt += 1
 
       //console.log(elem);
       if (elem.name == "flow"){
         var gap = this.dist(elem.initPosX, elem.initPosY, xLocal, yLocal);
+        var newObj2 = new THREE.Mesh(new BoxBufferGeometry(5, 5, 5), new MeshStandardMaterial());
+        newObj2.position.x = elem.initPosX;
+        newObj2.position.y = elem.initPosY;
+        this.scene.add(newObj2);
         if (lstFrame.length < 4){
           var point = {distance : gap, speedX: elem.speedX, speedY: elem.speedY, elem: elem};
           lstFrame.push(point);
@@ -331,6 +341,8 @@ export class VTThreeViewer {
         else{
           for (var i = 0; i < 4; i++){
             if (lstFrame[i].distance > gap){ //we found a closer point
+              console.log(i, lstFrame[0].distance, lstFrame[1].distance, lstFrame[2].distance, lstFrame[3].distance, gap);
+              newObj2.material.color.set("green");
               lstFrame[i] = {distance: gap, speedX: elem.speedX, speedY: elem.speedY, elem : elem}; //replacing the furthest point
               lstFrame.sort(function(point1, point2){ //sorting again the array, each time a closer point is found
                 return point1.distance > point2.distance ? -1 : 1;
@@ -343,12 +355,12 @@ export class VTThreeViewer {
       }
     }.bind(this));
 
-
+    console.log(cpt);
     lstFrame[0].elem.children[0].material.color.set("red");
     lstFrame[1].elem.children[0].material.color.set("red");
     lstFrame[2].elem.children[0].material.color.set("red");
     lstFrame[3].elem.children[0].material.color.set("red");
-    
+
     var clickSpeedX = (lstFrame[0].distance*lstFrame[0].speedX + 
       lstFrame[1].distance*lstFrame[1].speedX +
       lstFrame[2].distance*lstFrame[2].speedX +
