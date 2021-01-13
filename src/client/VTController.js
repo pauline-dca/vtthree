@@ -94,23 +94,25 @@ export class VTController {
         cylinder.getWorldQuaternion(quaternion);
         var euler_rot = new THREE.Euler().setFromQuaternion(quaternion);
 
-        var scale = new THREE.Vector3();
-        cylinder.getWorldScale(scale);
-        //console.log(flow.position.x, flow.position.y);
-        //console.log(scale.y)
+        //var scale = new THREE.Vector3();
+        //cylinder.getWorldScale(scale);
+        var scale = flow.size
 
         //RESETING POSITION IF NECESSARY
         
-        var currentDistanceFromInit = Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2);
-        if (currentDistanceFromInit >= scale.y){
-          /*
-          console.log(flow.initPosX, flow.initPosY);
-          console.log(flow.position.x, flow.position.y);
-          console.log(scale.y);
-          console.log(Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2));*/
-          flow.position.x = flow.initPosX;
-          flow.position.y = flow.initPosY;
+        var currentDistanceFromInit = Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2 + (flow.initPosZ - flow.position.z)**2);
+        if (currentDistanceFromInit >= scale){
+
+          //les ajouts aléatoires sont très importants et jouent bcp sur le rendu (à supprime si mieux quand très fluide).
+          //ils apportent un léger décalagage spatial pour donner plus de naturel, et du coup un décalage temporel (car la distance
+          // à l'origine n'est plus toujours la même, ce qui évite l'effet "hypnotisant", "déjà vu", "répétitif")
+          // mais cela brouille un peu aussi la donnée, c'est légèrement moins clair
+
+          flow.position.x = flow.initPosX + scale*Math.random()/2; 
+          flow.position.y = flow.initPosY + scale*Math.random()/2;
+          flow.position.z = flow.initPosZ;
           currentDistanceFromInit = 0;
+
         }
 
         
@@ -118,9 +120,15 @@ export class VTController {
         //MOVEMENT HANDLING
         
         if (0 < euler_rot.z < Math.PI/2){ //quart haut gauche dessin donc HAUT DROIT cercle trigo
-          var deltaX = -scale.y/50*Math.sin(euler_rot.z);
-          var deltaY = scale.y/50*Math.cos(euler_rot.z);
+          /*var deltaX = -scale/50*Math.sin(euler_rot.z);
+          var deltaY = scale/50*Math.cos(euler_rot.z);
+          var deltaZ = scale/50*(- Math.sin(euler_rot.x) + Math.cos(euler_rot.y));*/
+
         }
+
+        var deltaX = flow.speedX/30
+        var deltaY = flow.speedY/30
+        var deltaZ = flow.speedZ/30
         /*
         else if (Math.PI/2 < euler_rot.z < Math.PI){ //quart bas gauche dessin donc HAUT GAUCHE cercle trigo
           var deltaX = -scale.y/100*Math.cos(euler_rot.z - Math.PI/2);
@@ -137,19 +145,22 @@ export class VTController {
 
         //on utilise le log10(scale.y) pour adapter la vitesse de déplacement du flux à la vitesse réelle du vent tout en pondérant par le log
         //pour éviter de trop gros écarts de vitesses et une visualisation anarchique
-        flow.position.x += Math.log10(scale.y)*deltaX;
-        flow.position.y += Math.log10(scale.y)*deltaY;
+        /*flow.position.x += Math.log10(scale)*deltaX;
+        flow.position.y += Math.log10(scale)*deltaY;
+        flow.position.z += Math.log(scale)*deltaZ;*/
+
+        flow.position.x += deltaX;
+        flow.position.y += deltaY;
+        flow.position.z += deltaZ;
 
         //OPACITY HANDLING (OPACITY = FUNCTION OF POSITION... STRANGELY ENOUGH)
         
-        if (currentDistanceFromInit < scale.y/2){ //phase ascendante d'opacité
-          flow.children[0].material.opacity = 1.05 + (currentDistanceFromInit - scale.y/2)/(scale.y/2)
-          //flow.children[1].material.opacity = 1.05 + (currentDistanceFromInit - scale.y/2)/(scale.y/2)
+        if (currentDistanceFromInit < scale/2){ //phase ascendante d'opacité
+          flow.children[0].material.opacity = 1.05 + (currentDistanceFromInit - scale/2)/(scale/2)
 
         }
         else{ //phase descendante d'opacité
-          flow.children[0].material.opacity = 1.05 - (currentDistanceFromInit - scale.y/2)/(scale.y/2)
-          //flow.children[1].material.opacity = 1.05 - (currentDistanceFromInit - scale.y/2)/(scale.y/2)
+          flow.children[0].material.opacity = 1.05 - (currentDistanceFromInit - scale/2)/(scale/2)
         }
       }
     });

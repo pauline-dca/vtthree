@@ -13,7 +13,6 @@ var geometry = {
       proj4(proj3857, proj4326, [259000, 6248100]),
       proj4(proj3857, proj4326, [259500, 6248100]),
       proj4(proj3857, proj4326, [259500, 6248700]),
-      //proj4(proj3857, proj4326, [259239, 6248476])
     ]
   ]
 };
@@ -27,7 +26,7 @@ console.log(grid.features)
 
 //AJOUT NATHAN POUR VENT PSEUDO-REEL LÉGÈREMENT INCLINÉ
 let alpha = Math.PI/2
-let i = 0
+let i = 1
 
 for (let item of grid.features) {
   if (turf.booleanContains(feature, item)) {
@@ -36,15 +35,17 @@ for (let item of grid.features) {
     let y = (bbox[3] + bbox[1]) / 2;
 
     //AJOUT NATHAN : VENT PSEUDO-RÉEL, LÉGÈREMENT INCLINÉ
-    //let Z = 5 + Math.random()*80; //on utilise la hauteur pour
-    let Z = 0
-    //let randomCoef = 3*Math.random() //permet de faire varier la vitesse tout en gardant la même direction, et en fonction de la hauteur (pour l'exemple)
+    //let Z = 5 + Math.random()*50; //on utilise la hauteur pour
+    //let Z = 0
     let randomCoef = Math.log10(i);
+    let Z = 20 + i/10*Math.cos(alpha);
+    //let randomCoef = 3*Math.random() //permet de faire varier la vitesse tout en gardant la même direction, et en fonction de la hauteur (pour l'exemple)
     let dirU = randomCoef * -4*Math.sin(alpha);
     let dirV = randomCoef * 4*Math.cos(alpha);
+    let dirW = randomCoef * 4*Math.cos(1.3*alpha);
     alpha -= 4/grid.features.length;
 
-    result.push({ lat: y, lon: x, z: Z, u: dirU, v: dirV });
+    result.push({ lat: y, lon: x, z: Z, u: dirU, v: dirV, w : dirW});
     i = i + 1
   }
 }
