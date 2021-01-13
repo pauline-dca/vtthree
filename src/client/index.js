@@ -60,7 +60,7 @@ function addObjects() {
     var p = new THREE.CylinderBufferGeometry(flowWidthTop, flowWidthBottom);
 
     // Some main parameters for the flows, to be modified depending on the context...
-    var coef = 2;
+    var coef = 3;
     var flowSize = coef*Math.sqrt(point.u**2 + point.v**2 + point.w**2);
     var m = new THREE.MeshStandardMaterial({color : "black", opacity: 1, transparent: true});
     var mesh = new THREE.Mesh(p, m);

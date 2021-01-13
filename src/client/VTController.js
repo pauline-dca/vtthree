@@ -42,7 +42,7 @@ export class VTController {
       center,
       ZOOM_RES_L93[zoom]
     );
-    /*this.olViewer = await new OLViewer(
+    this.olViewer = await new OLViewer(
       this.width,
       this.height,
       center,
@@ -69,7 +69,7 @@ export class VTController {
         console.log("wheeeel ");
         self.zoomOlViewer(event);
       });
-    }*/
+    }
     
 
     this.render();
@@ -94,14 +94,13 @@ export class VTController {
         cylinder.getWorldQuaternion(quaternion);
         var euler_rot = new THREE.Euler().setFromQuaternion(quaternion);
 
-        //var scale = new THREE.Vector3();
-        //cylinder.getWorldScale(scale);
         var scale = flow.size
 
         //RESETING POSITION IF NECESSARY
+        var coef = 3
         
         var currentDistanceFromInit = Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2 + (flow.initPosZ - flow.position.z)**2);
-        if (currentDistanceFromInit >= scale){
+        if (currentDistanceFromInit >= coef*scale){
 
           //les ajouts aléatoires sont très importants et jouent bcp sur le rendu (à supprime si mieux quand très fluide).
           //ils apportent un léger décalagage spatial pour donner plus de naturel, et du coup un décalage temporel (car la distance
@@ -116,38 +115,11 @@ export class VTController {
         }
 
         
-        
         //MOVEMENT HANDLING
-        
-        if (0 < euler_rot.z < Math.PI/2){ //quart haut gauche dessin donc HAUT DROIT cercle trigo
-          /*var deltaX = -scale/50*Math.sin(euler_rot.z);
-          var deltaY = scale/50*Math.cos(euler_rot.z);
-          var deltaZ = scale/50*(- Math.sin(euler_rot.x) + Math.cos(euler_rot.y));*/
 
-        }
-
-        var deltaX = flow.speedX/30
-        var deltaY = flow.speedY/30
-        var deltaZ = flow.speedZ/30
-        /*
-        else if (Math.PI/2 < euler_rot.z < Math.PI){ //quart bas gauche dessin donc HAUT GAUCHE cercle trigo
-          var deltaX = -scale.y/100*Math.cos(euler_rot.z - Math.PI/2);
-          var deltaY = scale.y/100*Math.sin(euler_rot.z - Math.PI/2);
-        }
-        else if (Math.PI < euler_rot.z < 3*Math.PI/2){ //BAS GAUCHE cercle trigo
-          var deltaX = scale.y/100*Math.sin(euler_rot.z - Math.PI);
-          var deltaY = -scale.y/100*Math.cos(euler_rot.z - Math.PI);
-        }
-        else{ //BAS DROIT cercle trigo
-          var deltaX = scale.y/100*Math.sin(Math.PI*2 - euler_rot.z);
-          var deltaY = scale.y/100*Math.cos(Math.PI*2 - euler_rot.z);
-        }*/
-
-        //on utilise le log10(scale.y) pour adapter la vitesse de déplacement du flux à la vitesse réelle du vent tout en pondérant par le log
-        //pour éviter de trop gros écarts de vitesses et une visualisation anarchique
-        /*flow.position.x += Math.log10(scale)*deltaX;
-        flow.position.y += Math.log10(scale)*deltaY;
-        flow.position.z += Math.log(scale)*deltaZ;*/
+        var deltaX = flow.speedX/5
+        var deltaY = flow.speedY/5
+        var deltaZ = flow.speedZ/5
 
         flow.position.x += deltaX;
         flow.position.y += deltaY;
@@ -155,12 +127,12 @@ export class VTController {
 
         //OPACITY HANDLING (OPACITY = FUNCTION OF POSITION... STRANGELY ENOUGH)
         
-        if (currentDistanceFromInit < scale/2){ //phase ascendante d'opacité
-          flow.children[0].material.opacity = 1.05 + (currentDistanceFromInit - scale/2)/(scale/2)
+        if (currentDistanceFromInit < coef*scale/2){ //phase ascendante d'opacité
+          flow.children[0].material.opacity = 0.55 + (currentDistanceFromInit - coef*scale/2)/(coef*scale/2)
 
         }
         else{ //phase descendante d'opacité
-          flow.children[0].material.opacity = 1.05 - (currentDistanceFromInit - scale/2)/(scale/2)
+          flow.children[0].material.opacity = 0.55 - (currentDistanceFromInit - coef*scale/2)/(coef*scale/2)
         }
       }
     });
