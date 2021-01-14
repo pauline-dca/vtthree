@@ -5,7 +5,7 @@ import { VTController } from "./VTController";
 import { mergedRender, singleRender } from "./VTThreeViewer";
 import { planStyle, grisStyle, muetStyle } from "./OLViewer";
 import proj4 from "proj4";
-import { proj4326, proj3857} from "./Utils";
+import { proj4326, proj3857 } from "./Utils";
 
 //data can be imported like this or read from the data folder
 import * as geotiff from "geotiff";
@@ -36,7 +36,7 @@ let alesCenter = proj4(proj4326, proj3857, [coordsAles[1], coordsAles[0]]);
 //   style: muetStyle
 // };
 
-const paramsFlood = {
+const params = {
   center: alesCenter,
   zoom: 12,
   layers: [],
@@ -44,7 +44,7 @@ const paramsFlood = {
 };
 
 // let params = paramsFlood;
-// let controller = null;
+let controller = null;
 async function init() {
   // to read tiff file: https://geotiffjs.github.io/geotiff.js/. other files to be read should be added to the data folder
   let tiffData = await geotiff.fromUrl("ombreMNT.tif");
@@ -52,33 +52,50 @@ async function init() {
   const image = await tiffData.getImage();
   const widthI = image.getWidth();
   const heightI = image.getHeight();
-  console.log(widthI, heightI)
-  const data = await image.readRasters();
+  console.log(widthI, heightI);
+  const [data] = await image.readRasters();
+  const texture = new THREE.DataTexture(
+    data,
+    widthI,
+    heightI,
+    THREE.LuminanceFormat,
+    THREE.UnsignedByteType
+  );
+  texture.needsUpdate = true;
   // let tiffMNT = await geotiff.fromUrl("ombreMNT.tif");
 
-  // controller = new VTController(
-  //   width,
-  //   height,
-  //   params.center, //center coordinates in webmercator
-  //   params.zoom, //zoom level
-  //   params.layers, //layers to be rendered as 3D features
-  //   mergedRender, //render type, merged render more efficient but does not provide access to each feature
-  //   params.style, //style for the tiles
-  //   false
-  // );
-  // addObjects();
+  controller = new VTController(
+    width,
+    height,
+    params.center, //center coordinates in webmercator
+    params.zoom, //zoom level
+    params.layers, //layers to be rendered as 3D features
+    mergedRender, //render type, merged render more efficient but does not provide access to each feature
+    params.style, //style for the tiles
+    false
+  );
+  addObjects(texture);
 }
 
-function addObjects() {
+function addObjects(texture) {
   //example to add an object to the scene
-  let worldCoords = controller.threeViewer.getWorldCoords(alesCenter); // the getWorldCoords function transform webmercator coordinates into three js world coordinates
-  var geometry = new THREE.BoxBufferGeometry(100, 100, 100);
-  var material = new THREE.MeshStandardMaterial({ color: 0xff4500 });
-  var cube = new THREE.Mesh(geometry, material); //a three js mesh needs a geometry and a material
+  // let worldCoords = controller.threeViewer.getWorldCoords(alesCenter); // the getWorldCoords function transform webmercator coordinates into three js world coordinates
+  // var geometry = new THREE.BoxBufferGeometry(100, 100, 100);
+  //var material = new THREE.MeshStandardMaterial({ color: 0xff4500 });
+  // var cube = new THREE.Mesh(geometry, material); //a three js mesh needs a geometry and a material
+  // cube.position.x = worldCoords[0];
+  // cube.position.y = worldCoords[1];
+  // cube.position.z = 0;
+  // controller.threeViewer.scene.add(cube); //all objects have to be added to the threejs scene
+  let worldCoords = controller.threeViewer.getWorldCoords(alesCenter);
+  const geometry = new THREE.PlaneBufferGeometry(100, 100, 32);
+
+  var material = new THREE.MeshBasicMaterial({ map: texture });
+  var cube = new THREE.Mesh(geometry, material);
   cube.position.x = worldCoords[0];
   cube.position.y = worldCoords[1];
   cube.position.z = 0;
-  controller.threeViewer.scene.add(cube); //all objects have to be added to the threejs scene
+  controller.threeViewer.scene.add(cube);
 }
 
 init();
