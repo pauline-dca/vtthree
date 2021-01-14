@@ -5,6 +5,7 @@ import Feature from "ol/Feature";
 import { ZOOM_RES_L93 } from "./Utils";
 import { Euler, Vector3 } from "three";
 import { distance } from "@turf/turf";
+import * as dat from 'dat.gui';
 
 
 export class VTController {
@@ -17,7 +18,8 @@ export class VTController {
     renderMode,
     style,
     tileZoom,
-    flowLine
+    flowLine,
+    baseSpeed,
   ) {
     this.width = width;
     this.height = height;
@@ -31,6 +33,8 @@ export class VTController {
     this.state = { loading: 0 };
     this.tileZoom = tileZoom;
     this.flowLine = flowLine;
+    this.baseSpeed = baseSpeed;
+    console.log(baseSpeed, this.baseSpeed);
   }
 
   async init(center, zoom, renderMode, style, tileZoom) {
@@ -42,7 +46,7 @@ export class VTController {
       center,
       ZOOM_RES_L93[zoom]
     );
-    this.olViewer = await new OLViewer(
+    /*this.olViewer = await new OLViewer(
       this.width,
       this.height,
       center,
@@ -69,8 +73,7 @@ export class VTController {
         console.log("wheeeel ");
         self.zoomOlViewer(event);
       });
-    }
-    
+    }*/
 
     this.render();
   }
@@ -117,9 +120,10 @@ export class VTController {
         
         //MOVEMENT HANDLING
 
-        var deltaX = flow.speedX/5
-        var deltaY = flow.speedY/5
-        var deltaZ = flow.speedZ/5
+        //console.log(this.baseSpeed);
+        var deltaX = flow.speedX*this.baseSpeed;
+        var deltaY = flow.speedY*this.baseSpeed;
+        var deltaZ = flow.speedZ*this.baseSpeed;
 
         flow.position.x += deltaX;
         flow.position.y += deltaY;
@@ -135,7 +139,7 @@ export class VTController {
           flow.children[0].material.opacity = 0.55 - (currentDistanceFromInit - coef*scale/2)/(coef*scale/2)
         }
       }
-    });
+    }.bind(this));
 
     if (this.flowLine){
       this.flowLine.moveAlongCurve(0.01);

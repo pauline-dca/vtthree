@@ -13,6 +13,7 @@ import windData from "../../data/wind.json";
 import { abstract } from "ol/util";
 import { Matrix4, SphereBufferGeometry } from "three";
 import { extendRings } from "ol/extent";
+import * as dat from 'dat.gui';
 
 
 const width = window.innerWidth; // this makes the 3D canvas full screen
@@ -21,12 +22,16 @@ const height = window.innerHeight; // this makes the 3D canvas full screen
 let vavinLatLon = [48.8441416, 2.3288795];
 let vavinCenter = proj4(proj4326, proj3857, [vavinLatLon[1], vavinLatLon[0]]);
 
+let baseSpeed = 0.2;
+let withFlowLine = false;
+
 const paramsWind = {
   center: vavinCenter,
   zoom: 18,
   layers: ["bati_surf", "bati_zai"],
   //layers : [],
-  style: muetStyle
+  style: muetStyle,
+  tileZoom: false
 };
 
 let params = paramsWind;
@@ -41,20 +46,70 @@ async function init() {
     params.layers, //layers to be rendered as 3D features
     mergedRender, //render type, merged render more efficient but does not provide access to each feature
     params.style, //style for the tiles
-    false,
-    null
+    params.tileZoom,
+    withFlowLine,
+    baseSpeed,
   );
+
   var flowLine = addObjects();
   controller.flowLine = flowLine;
 }
 
 function addObjects() {
+
+  // GUI AND PARAMS SETTING
+  var gui = new dat.GUI({name: "First GUI", hideable: true});
+  var menuMesh = gui.addFolder("Mesh");
+  //gui.addFolder("Speed");
+  //gui.addFolder("Camera");
+  //gui.addFolder("Direction");
+  //gui.addFolder("Environment");
+  /*gui.add(newObj2.position, "x", 0, 100).onChange(function(newValue){
+    console.log("New value : ", newValue);
+  });*/
+
+  var paramsGUI = {tailleMesh : 3,
+              couleurMesh : "#000000",
+              typeMesh : "cylinder",
+              geomFlux : "mesh",
+              nbFlux : 10,
+              speedFlux : 0.2,
+              opaciteFlux : 1,
+              newPosFlux : 0,
+              contFlux : null};
+
+  //gui.remember(params);
+  var changeTaille = menuMesh.add(paramsGUI, "tailleMesh", 1, 10, 0.5).name("Taille")//.listen();
+  changeTaille.onChange(function(value){
+    controller.threeViewer.scene.traverse(function(obj){
+      var mat = new Matrix4().makeScale(1, value, 1)
+      if (obj.name == "flow"){
+        obj.applyMatrix4(mat);
+      }
+    })
+  });
+
+  var changeSpeed = menuMesh.add(paramsGUI, "speedFlux", 0, 1, 0.01).name("Vitesse")//.listen();
+  changeSpeed.onChange(function(value){
+    controller.baseSpeed = value;
+  });
+
+  var changeCouleur = menuMesh.addColor(paramsGUI, "couleurMesh").name("Couleur");
+  changeCouleur.onChange(function(value){
+    controller.threeViewer.scene.traverse(function(obj){
+      if (obj.name == "flow"){
+        obj.children[0].material.color.set(value);
+      }
+    })
+  });
+
+  
   
   windData.forEach(function(point){
     
     //Initial buffer geometries
 
-    var flowWidthTop = 0.1;
+    var flowWidthTop = 0.2;
     var flowWidthBottom = 0.01;
 
     var p = new THREE.CylinderBufferGeometry(flowWidthTop, flowWidthBottom);
@@ -138,7 +193,7 @@ function addObjects() {
     { x: -200, y: 200, z: 120 },
   ];
 
-  /*
+  
 
   const boxGeometry = new THREE.BoxBufferGeometry( 0.1, 0.1, 0.1 );
   const boxMaterial = new THREE.MeshBasicMaterial();
@@ -164,9 +219,8 @@ function addObjects() {
   controller.threeViewer.scene.add( line );
 
   //geometry to be placed along the curve
-  //var rect = new THREE.SphereBufferGeometry(5,8,6);
+  var rect = new THREE.SphereBufferGeometry(5,8,6);
 
-  var rect = new THREE.CylinderBufferGeometry(0.3, 0.02, 100);
   //rect.rotateY(-Math.PI/2);
 
   const objectToCurve = new THREE.Mesh(rect, new THREE.MeshStandardMaterial({color: 0x99ffff}));
