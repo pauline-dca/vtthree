@@ -2,6 +2,7 @@ import proj4 from "proj4";
 
 export const proj4326 = proj4.defs("EPSG:4326");
 export const proj3857 = proj4.defs("EPSG:3857");
+export const proj2154 = proj4.defs("EPSG:2154");
 
 export const ZOOM_RES_L93 = [
   156543.033928041,
