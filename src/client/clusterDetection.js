@@ -19,4 +19,8 @@ kmeans.clusterize(vectors, { k: 10 }, (err, res) => {
     let data = JSON.stringify(res);
     fs.writeFileSync("data/clusters.json", data);
   }
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> a6bd488d04bdeef57f1849a21593e47ec058c362
