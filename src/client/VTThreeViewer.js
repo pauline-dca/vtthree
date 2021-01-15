@@ -300,8 +300,9 @@ export class VTThreeViewer {
     this.rayCaster.setFromCamera(new THREE.Vector2(x, y), this.currentCamera);
     var intersects = this.rayCaster.intersectObjects(this.planes.children);
 
-    //var xShow = intersects[0].point.x * this.zoomFactor + this.mapCenter[0]
-    //var yShow = intersects[0].point.y * this.zoomFactor + this.mapCenter[1]
+    var xShow = intersects[0].point.x * this.zoomFactor + this.mapCenter[0]
+    var yShow = intersects[0].point.y * this.zoomFactor + this.mapCenter[1]
+    console.log(xShow, yShow);
 
     //AJOUT NATHAN : INTERPOLATION À LA VOLÉE POUR DONNER UNE VALEUR PRÉCISE DE VITESSE DE VENT EN TOUT POINT DE L'ESPACE
     var xLocal = intersects[0].point.x;

@@ -18,8 +18,9 @@ export class VTController {
     renderMode,
     style,
     tileZoom,
-    flowLine,
-    baseSpeed,
+    //flowLine,
+    //baseSpeed,
+    paramsGUI
   ) {
     this.width = width;
     this.height = height;
@@ -32,9 +33,11 @@ export class VTController {
     this.init(center, zoom, renderMode, style, tileZoom);
     this.state = { loading: 0 };
     this.tileZoom = tileZoom;
-    this.flowLine = flowLine;
-    this.baseSpeed = baseSpeed;
-    console.log(baseSpeed, this.baseSpeed);
+    this.flowLine = paramsGUI.flowLine;
+    this.baseSpeed = paramsGUI.speedFlux;
+    this.opaciteMax = paramsGUI.opaciteMax;
+    this.opaciteMin = paramsGUI.opaciteMin;
+    //console.log(baseSpeed, this.baseSpeed);
   }
 
   async init(center, zoom, renderMode, style, tileZoom) {
@@ -46,7 +49,7 @@ export class VTController {
       center,
       ZOOM_RES_L93[zoom]
     );
-    /*this.olViewer = await new OLViewer(
+    this.olViewer = await new OLViewer(
       this.width,
       this.height,
       center,
@@ -73,7 +76,7 @@ export class VTController {
         console.log("wheeeel ");
         self.zoomOlViewer(event);
       });
-    }*/
+    }
 
     this.render();
   }
@@ -90,17 +93,10 @@ export class VTController {
     this.threeViewer.scene.traverse (function (flow){
       if (flow.name == "flow"){
 
-        //NECESSARY LOCAL VARIABLES
-        var cylinder = flow.children[0];
-
-        var quaternion = new THREE.Quaternion();
-        cylinder.getWorldQuaternion(quaternion);
-        var euler_rot = new THREE.Euler().setFromQuaternion(quaternion);
-
         var scale = flow.size
 
         //RESETING POSITION IF NECESSARY
-        var coef = 3
+        var coef = 1;
         
         var currentDistanceFromInit = Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2 + (flow.initPosZ - flow.position.z)**2);
         if (currentDistanceFromInit >= coef*scale){
@@ -110,8 +106,8 @@ export class VTController {
           // à l'origine n'est plus toujours la même, ce qui évite l'effet "hypnotisant", "déjà vu", "répétitif")
           // mais cela brouille un peu aussi la donnée, c'est légèrement moins clair
 
-          flow.position.x = flow.initPosX + scale*Math.random()/2; 
-          flow.position.y = flow.initPosY + scale*Math.random()/2;
+          flow.position.x = flow.initPosX// + scale*Math.random()/2; 
+          flow.position.y = flow.initPosY// + scale*Math.random()/2;
           flow.position.z = flow.initPosZ;
           currentDistanceFromInit = 0;
 
@@ -132,11 +128,11 @@ export class VTController {
         //OPACITY HANDLING (OPACITY = FUNCTION OF POSITION... STRANGELY ENOUGH)
         
         if (currentDistanceFromInit < coef*scale/2){ //phase ascendante d'opacité
-          flow.children[0].material.opacity = 0.55 + (currentDistanceFromInit - coef*scale/2)/(coef*scale/2)
+          flow.children[0].material.opacity = this.opaciteMax + (currentDistanceFromInit - coef*scale/2)/(coef*scale/2) + this.opaciteMin;
 
         }
         else{ //phase descendante d'opacité
-          flow.children[0].material.opacity = 0.55 - (currentDistanceFromInit - coef*scale/2)/(coef*scale/2)
+          flow.children[0].material.opacity = this.opaciteMax - (currentDistanceFromInit - coef*scale/2)/(coef*scale/2) + this.opaciteMin;
         }
       }
     }.bind(this));

@@ -11,9 +11,10 @@ import { Flow } from "three/examples/jsm/modifiers/CurveModifier.js";
 //data can be imported like this or read from the data folder
 import windData from "../../data/wind.json";
 import { abstract } from "ol/util";
-import { Matrix4, SphereBufferGeometry } from "three";
+import { CylinderBufferGeometry, Matrix4, SphereBufferGeometry } from "three";
 import { extendRings } from "ol/extent";
 import * as dat from 'dat.gui';
+import { Quaternion } from "three/build/three.module";
 
 
 const width = window.innerWidth; // this makes the 3D canvas full screen
@@ -36,7 +37,20 @@ const paramsWind = {
 
 let params = paramsWind;
 let controller = null;
+
 async function init() {
+
+  var paramsGUI = {tailleMesh : 1,
+    couleurMesh : "#000000",
+    typeMesh : "Cylindre",
+    geomFlux : "mesh",
+    nbFlux : 10,
+    speedFlux : 0.1,
+    opaciteMax : 0.55,
+    opaciteMin : 0,
+    newPosFlux : 0,
+    contFlux : null,
+    flowLine : false};
 
   controller = new VTController(
     width,
@@ -47,55 +61,55 @@ async function init() {
     mergedRender, //render type, merged render more efficient but does not provide access to each feature
     params.style, //style for the tiles
     params.tileZoom,
-    withFlowLine,
-    baseSpeed,
+    //withFlowLine,
+    //baseSpeed,
+    paramsGUI,
   );
-
-  var flowLine = addObjects();
-  controller.flowLine = flowLine;
-}
-
-function addObjects() {
 
   // GUI AND PARAMS SETTING
   var gui = new dat.GUI({name: "First GUI", hideable: true});
   var menuMesh = gui.addFolder("Mesh");
-  //gui.addFolder("Speed");
-  //gui.addFolder("Camera");
-  //gui.addFolder("Direction");
-  //gui.addFolder("Environment");
-  /*gui.add(newObj2.position, "x", 0, 100).onChange(function(newValue){
-    console.log("New value : ", newValue);
-  });*/
 
-  var paramsGUI = {tailleMesh : 3,
-              couleurMesh : "#000000",
-              typeMesh : "cylinder",
-              geomFlux : "mesh",
-              nbFlux : 10,
-              speedFlux : 0.2,
-              opaciteFlux : 1,
-              newPosFlux : 0,
-              contFlux : null};
+  //gui.remember(paramsGUI);
 
-  //gui.remember(params);
-  var changeTaille = menuMesh.add(paramsGUI, "tailleMesh", 1, 10, 0.5).name("Taille")//.listen();
+  var changeTaille = menuMesh.add(paramsGUI, "tailleMesh", 0.5, 5, 0.1).name("Taille").listen();
   changeTaille.onChange(function(value){
-    controller.threeViewer.scene.traverse(function(obj){
-      var mat = new Matrix4().makeScale(1, value, 1)
-      if (obj.name == "flow"){
-        obj.applyMatrix4(mat);
-      }
-    })
+    if (paramsGUI.typeMesh == "Cylindre"){ //only with Cylindre
+      controller.threeViewer.scene.traverse(function(obj){
+        if (obj.name == "flow"){ 
+          var mat = new Matrix4().makeScale(1, value/obj.currentScale, 1);
+          var quaternion = new THREE.Quaternion();
+          obj.children[0].getWorldQuaternion(quaternion);
+          obj.children[0].rotation.set(0,0,0);
+          obj.children[0].applyMatrix4(mat);
+          obj.currentScale = value;
+          obj.children[0].applyQuaternion(quaternion);
+        }
+      })
+    }
+    else{
+      console.log("Impossible de modifier la taille avec ce type de Mesh (cylindre uniquement");
+    }
   });
 
-  var changeSpeed = menuMesh.add(paramsGUI, "speedFlux", 0, 1, 0.01).name("Vitesse")//.listen();
+  var changeOpaciteMax = menuMesh.add(paramsGUI, "opaciteMax", 0, 1, 0.01).name("Opacité Max").listen();
+  changeOpaciteMax.onChange(function(value){
+    controller.opaciteMax = value;
+  });
+
+  var changeOpaciteMin = menuMesh.add(paramsGUI, "opaciteMin", 0, 1, 0.01).name("Opacité Min").listen();
+  changeOpaciteMin.onChange(function(value){
+    controller.opaciteMin = value;
+  });
+
+  var changeSpeed = menuMesh.add(paramsGUI, "speedFlux", 0, 1, 0.01).name("Vitesse").listen();
   changeSpeed.onChange(function(value){
     controller.baseSpeed = value;
   });
 
-  var changeCouleur = menuMesh.addColor(paramsGUI, "couleurMesh").name("Couleur");
+  var changeCouleur = menuMesh.addColor(paramsGUI, "couleurMesh").name("Couleur").listen();
   changeCouleur.onChange(function(value){
+    console.log(paramsGUI.speedFlux);
     controller.threeViewer.scene.traverse(function(obj){
       if (obj.name == "flow"){
         obj.children[0].material.color.set(value);
@@ -103,7 +117,99 @@ function addObjects() {
     })
   });
 
+  var changeGeometry = menuMesh.add(paramsGUI, "typeMesh", ["Cylindre", "Sphere", "Particule"]).name("Forme").listen();
+  changeGeometry.onChange(function(value){
+    // possible values are for the time being : cylinder, sphere (Particle to come)
+    
+    if (value == "Particule"){
+      var particles = new THREE.Geometry();
+      var pMaterial = new THREE.PointsMaterial({
+        color: "#000000",
+        size : 5,
+        transparent : true,
+        blending: THREE.AdditiveBlending
+      });
+    }
+    
+    controller.threeViewer.scene.traverse(function(obj){
+      if (obj.name == "flow"){
+        if (value == "Sphere"){
+          var p = new THREE.SphereBufferGeometry(1);
+          var m = obj.children[0].material.clone();
+          var mesh = new THREE.Mesh(p, m);
+          obj.children[0].geometry.dispose();
+          obj.children[0].material.dispose();
+          controller.threeViewer.scene.remove(obj.children[0]);
+          obj.remove(obj.children[0]);
+          obj.add(mesh);
+
+        }
+        else if (value == "Cylindre"){
+          var p = new THREE.CylinderBufferGeometry(0.2, 0.01);
+          var m = obj.children[0].material.clone();
+          var mesh = new THREE.Mesh(p, m);
+          obj.children[0].geometry.dispose();
+          obj.children[0].material.dispose();
+          controller.threeViewer.scene.remove(obj.children[0]);
+          obj.remove(obj.children[0]);
+          orientateMesh(mesh, obj.speedX, obj.speedY, obj.speedZ, obj.size);
+          obj.add(mesh);
+        }
+        else if (value == "Particule"){
+          obj.children[0].geometry.dispose();
+          obj.children[0].material.dispose();
+          controller.threeViewer.scene.remove(obj.children[0]);
+          obj.remove(obj.children[0]);
+          var particle = new THREE.Vector3(obj.initPosX, obj.initPosY, obj.initPosZ);
+          particles.vertices.push(particle);
+        }
+      }
+    });
+
+    if (value == "Particule"){
+      var particleSystem = new THREE.Points(particles, pMaterial);
+      obj.add(particleSystem);
+      //controller.threeViewer.scene.add(particleSystem);
+    }
+
+  });
+
+  var flowLine = addObjects();
+  controller.flowLine = flowLine;
+}
+
+function orientateMesh(mesh, speedX, speedY, speedZ, length){
+  mesh.applyMatrix4(new Matrix4().makeScale(1, length, 1));
+  mesh.rotateOnWorldAxis(new THREE.Vector3(1,0,0), Math.atan(speedZ/length)); //rotation X (direction haut bas)
+
+  //Rotation handling :
   
+  if (speedX >= 0){ //vitesse en longitude, selon les x
+    if (speedY >= 0){ //vitesse en latitude, selon les y
+      //quart haut droit du cercle trigo, si l'on place les x au nord, car l'orientation de base des meshs est dirigée vers les y
+      mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), - Math.atan(speedX/speedY)); //rotation selon Z (direction lat lon)
+    }
+    else{
+      //quart bas droit
+      mesh.material.color.set("red");
+      mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), - Math.atan(speedX/speedY) - Math.PI);
+    }
+  }
+  else{
+    if (speedY >= 0){
+      //quart haut gauche
+      mesh.material.color.set("green");
+      mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.atan(speedY/speedX) + Math.PI/2);
+    }
+    else{
+      //quart bas gauche
+      mesh.material.color.set("blue");
+      mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.PI/2 + Math.atan(speedY/speedX));
+    }
+  }
+}
+
+function addObjects() {
   
   windData.forEach(function(point){
     
@@ -119,37 +225,7 @@ function addObjects() {
     var flowSize = coef*Math.sqrt(point.u**2 + point.v**2 + point.w**2);
     var m = new THREE.MeshStandardMaterial({color : "black", opacity: 1, transparent: true});
     var mesh = new THREE.Mesh(p, m);
-    mesh.rotateOnWorldAxis(new THREE.Vector3(1,0,0), Math.atan(point.w/flowSize)); //rotation X (direction haut bas)
-
-    //Rotation handling :
-    
-    if (point.u >= 0){ //vitesse en longitude, selon les x
-      if (point.v >= 0){ //vitesse en latitude, selon les y
-        //quart haut droit du cercle trigo, si l'on place les x au nord, car l'orientation de base des meshs est dirigée vers les y
-        mesh.applyMatrix4(new Matrix4().makeScale(1, flowSize, 1));
-        mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), - Math.atan(point.u/point.v)); //rotation selon Z (direction lat lon)
-      }
-      else{
-        //quart bas droit
-        mesh.material.color.set("red");
-        mesh.applyMatrix4(new Matrix4().makeScale(1, flowSize, 1));
-        mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), - Math.atan(point.u/point.v) - Math.PI);
-      }
-    }
-    else{
-      if (point.v >= 0){
-        //quart haut gauche
-        mesh.material.color.set("green");
-        mesh.applyMatrix4(new Matrix4().makeScale(1, flowSize, 1));
-        mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.atan(point.v/point.u) + Math.PI/2);
-      }
-      else{
-        //quart bas gauche
-        mesh.material.color.set("blue");
-        mesh.applyMatrix4(new Matrix4().makeScale(1, flowSize, 1));
-        mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.PI/2 + Math.atan(point.v/point.u));
-      }
-    }
+    orientateMesh(mesh, point.u, point.v, point.w, flowSize);
 
     //Postionning the objects
     var cooWebMerca = proj4(proj4326, proj3857, [point.lon, point.lat]);
@@ -168,6 +244,7 @@ function addObjects() {
     flow.speedY = point.v;
     flow.speedZ = point.w;
     flow.size = flowSize;
+    flow.currentScale = 1;
 
     controller.threeViewer.scene.add(flow);
 /*
