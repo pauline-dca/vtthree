@@ -53,7 +53,7 @@ for (let item of gridCorridor.features) {
     //let Z = 0
     let randomCoef = Math.log10(i);
     //let Z = 5 + i/10*Math.cos(alpha);
-    let Z = Math.random()/5;
+    let Z = 15;
     //let randomCoef = 3*Math.random() //permet de faire varier la vitesse tout en gardant la même direction, et en fonction de la hauteur (pour l'exemple)
     let dirU = randomCoef * -4*Math.sin(alpha);
     let dirV = randomCoef * 4*Math.cos(alpha);

@@ -14,7 +14,7 @@ import { abstract } from "ol/util";
 import { CylinderBufferGeometry, Matrix4, SphereBufferGeometry } from "three";
 import { extendRings } from "ol/extent";
 import * as dat from 'dat.gui';
-import { Quaternion } from "three/build/three.module";
+import { Mesh, Quaternion } from "three/build/three.module";
 
 
 const width = window.innerWidth; // this makes the 3D canvas full screen
@@ -32,7 +32,7 @@ const paramsWind = {
   layers: ["bati_surf", "bati_zai"],
   //layers : [],
   style: muetStyle,
-  tileZoom: false
+  tileZoom: true
 };
 
 let params = paramsWind;
@@ -42,13 +42,15 @@ async function init() {
 
   var paramsGUI = {tailleMesh : 1,
     couleurMesh : "#000000",
+    hauteurMesh : 15,
+    typeFourchette : 0,
     typeMesh : "Cylindre",
     geomFlux : "mesh",
     nbFlux : 10,
-    speedFlux : 0.1,
+    speedFlux : 0.05,
     opaciteMax : 0.55,
     opaciteMin : 0,
-    newPosFlux : 0,
+    newPosFlux : "Fixe",
     contFlux : null,
     flowLine : false};
 
@@ -61,8 +63,6 @@ async function init() {
     mergedRender, //render type, merged render more efficient but does not provide access to each feature
     params.style, //style for the tiles
     params.tileZoom,
-    //withFlowLine,
-    //baseSpeed,
     paramsGUI,
   );
 
@@ -76,7 +76,7 @@ async function init() {
   changeTaille.onChange(function(value){
     if (paramsGUI.typeMesh == "Cylindre"){ //only with Cylindre
       controller.threeViewer.scene.traverse(function(obj){
-        if (obj.name == "flow"){ 
+        if (obj.name == "flow" || obj.name == "skyFlow"){ 
           var mat = new Matrix4().makeScale(1, value/obj.currentScale, 1);
           var quaternion = new THREE.Quaternion();
           obj.children[0].getWorldQuaternion(quaternion);
@@ -85,7 +85,21 @@ async function init() {
           obj.currentScale = value;
           obj.children[0].applyQuaternion(quaternion);
         }
-      })
+      });
+    }
+    else if (paramsGUI.typeMesh == "Sphere"){ //MARCHE MAIS RAME DU CUL
+      controller.threeViewer.scene.traverse(function(obj){
+        if (obj.name == "flow" || obj.name == "skyFlow"){
+          var oldMaterial = obj.children[0].material.clone();
+          var geomSphere = new THREE.SphereBufferGeometry(value);
+          var meshSphere = new Mesh(geomSphere, oldMaterial);
+          obj.children[0].geometry.dispose();
+          obj.children[0].material.dispose();
+          controller.threeViewer.scene.remove(obj.children[0]);
+          obj.remove(obj.children[0]);
+          obj.add(meshSphere);
+        }
+      });
     }
     else{
       console.log("Impossible de modifier la taille avec ce type de Mesh (cylindre uniquement");
@@ -111,10 +125,50 @@ async function init() {
   changeCouleur.onChange(function(value){
     console.log(paramsGUI.speedFlux);
     controller.threeViewer.scene.traverse(function(obj){
-      if (obj.name == "flow"){
+      if (obj.name == "flow" || obj.name == "skyFlow"){
         obj.children[0].material.color.set(value);
       }
-    })
+    });
+  });
+
+  var changeHauteur = menuMesh.add(paramsGUI, "hauteurMesh", 0, 50, 0.5).name("Hauteur").listen();
+  changeHauteur.onChange(function(value){
+    controller.threeViewer.scene.traverse(function(obj){
+      if (obj.name == "flow"){
+        obj.position.z = value;
+        obj.initPosZ = value;
+      }
+      else if (obj.name =="skyFlow"){
+        obj.position.z = 45 + value;
+        obj.initPosZ = 45 + value;
+      }
+    });
+  });
+
+  var fourchetteHauteur = menuMesh.add(paramsGUI, "typeFourchette", 0, 10, 0.5).name("Hauteur simulée").listen();
+  fourchetteHauteur.onChange(function(value){
+    controller.typeFourchette = value;
+    controller.threeViewer.scene.traverse(function(obj){
+      if (obj.name == "flow" || obj.name == "skyFlow"){
+        var modifier = Math.random() * (2*value) - value;
+        obj.position.z = obj.initPosZ + modifier;
+        obj.currentZ = obj.position.z;
+      }
+    });
+  });
+
+  var changeRepos = menuMesh.add(paramsGUI, "newPosFlux", ["Fixe", "Aléatoire"]).name("Repositionnement aléatoire").listen();
+  changeRepos.onChange(function(value){
+    if (value == "Fixe"){
+      controller.threeViewer.scene.traverse(function(obj){
+        if (obj.name == "flow" || obj.name == "skyFlow"){
+          obj.position.x = obj.initPosX;
+          obj.position.y = obj.initPosY;
+          obj.position.z = obj.initPosZ;
+        }
+      });
+    }
+    controller.reposFlux = value; //ATTENTION, LE RANDOM JOUE SUIVANT LA TAILLE DU FLUX (flow.size), MAIS CELLE CI N'EST PAS MISE À JOUR LORSQUE LA VARIABLE TAILLE EST CHANGÉE DANS LE MENU
   });
 
   var changeGeometry = menuMesh.add(paramsGUI, "typeMesh", ["Cylindre", "Sphere", "Particule"]).name("Forme").listen();
@@ -132,7 +186,7 @@ async function init() {
     }
     
     controller.threeViewer.scene.traverse(function(obj){
-      if (obj.name == "flow"){
+      if (obj.name == "flow" || obj.name == "skyFlow"){
         if (value == "Sphere"){
           var p = new THREE.SphereBufferGeometry(1);
           var m = obj.children[0].material.clone();
@@ -233,10 +287,17 @@ function addObjects() {
 
     var flow = new THREE.Group();
     flow.add(mesh);
-    flow.name = "flow";
+    if (point.z > 50){
+      flow.name = "skyFlow";
+    }
+    else{
+      flow.name = "flow";
+    }
+
     flow.initPosX = goodCoords[0];
     flow.initPosY = goodCoords[1];
-    flow.initPosZ = point.z
+    flow.initPosZ = point.z;
+    flow.currentZ = point.z;
     flow.position.x = goodCoords[0];
     flow.position.y = goodCoords[1];
     flow.position.z = point.z

@@ -18,8 +18,6 @@ export class VTController {
     renderMode,
     style,
     tileZoom,
-    //flowLine,
-    //baseSpeed,
     paramsGUI
   ) {
     this.width = width;
@@ -37,7 +35,8 @@ export class VTController {
     this.baseSpeed = paramsGUI.speedFlux;
     this.opaciteMax = paramsGUI.opaciteMax;
     this.opaciteMin = paramsGUI.opaciteMin;
-    //console.log(baseSpeed, this.baseSpeed);
+    this.reposFlux = paramsGUI.newPosFlux;
+    this.typeFourchette = paramsGUI.typeFourchette;
   }
 
   async init(center, zoom, renderMode, style, tileZoom) {
@@ -73,7 +72,7 @@ export class VTController {
 
     if (this.tileZoom) {
       this.threeViewer.renderer.domElement.addEventListener("wheel", event => {
-        console.log("wheeeel ");
+        //console.log("wheeeel ");
         self.zoomOlViewer(event);
       });
     }
@@ -91,14 +90,14 @@ export class VTController {
 
     //PLACING & ANIMATING FLOWS
     this.threeViewer.scene.traverse (function (flow){
-      if (flow.name == "flow"){
+      if (flow.name == "flow" || flow.name == "skyFlow"){
 
         var scale = flow.size
 
         //RESETING POSITION IF NECESSARY
         var coef = 1;
         
-        var currentDistanceFromInit = Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2 + (flow.initPosZ - flow.position.z)**2);
+        var currentDistanceFromInit = Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2 + (flow.currentZ - flow.position.z)**2);
         if (currentDistanceFromInit >= coef*scale){
 
           //les ajouts aléatoires sont très importants et jouent bcp sur le rendu (à supprime si mieux quand très fluide).
@@ -106,11 +105,23 @@ export class VTController {
           // à l'origine n'est plus toujours la même, ce qui évite l'effet "hypnotisant", "déjà vu", "répétitif")
           // mais cela brouille un peu aussi la donnée, c'est légèrement moins clair
 
-          flow.position.x = flow.initPosX// + scale*Math.random()/2; 
-          flow.position.y = flow.initPosY// + scale*Math.random()/2;
-          flow.position.z = flow.initPosZ;
-          currentDistanceFromInit = 0;
+          if (this.typeFourchette == 0){
+            var refPosZ = flow.initPosZ;
+          }
+          else if (this.typeFourchette > 0){
+            var refPosZ = flow.currentZ;
+          }
 
+          if (this.reposFlux == "Fixe"){
+            flow.position.x = flow.initPosX;
+            flow.position.y = flow.initPosY;
+          }
+          else if (this.reposFlux == "Aléatoire"){
+            flow.position.x = flow.initPosX + scale*Math.random()/2; 
+            flow.position.y = flow.initPosY + scale*Math.random()/2;
+          }
+          flow.position.z = refPosZ;
+          currentDistanceFromInit = 0;
         }
 
         
@@ -158,6 +169,8 @@ export class VTController {
 
   zoomOlViewer(event) {
     console.log("zoooooom!");
+    //var zoom = controls.target.distanceTo( controls.object.position )
+    //console.log(this.threeViewer.controls.target.distanceTo(this.threeViewer.controls.object.position));
     //this.olViewer.domElement.dispatchEvent(
     this.olViewer.map.getViewport().dispatchEvent(
       new WheelEvent("wheel", {
