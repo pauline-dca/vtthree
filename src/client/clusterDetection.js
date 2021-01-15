@@ -15,7 +15,8 @@ for (let i = 0; i < cases.length; i++) {
 
 kmeans.clusterize(vectors, { k: 10 }, (err, res) => {
   if (err) console.error(err);
-  else console.log("%o", res);
-  let data = JSON.stringify(res);
-  fs.writeFileSync("data/clusters.json", data);
+  else {
+    let data = JSON.stringify(res);
+    fs.writeFileSync("data/clusters.json", data);
+  }
 });
