@@ -29,10 +29,10 @@ let withFlowLine = false;
 const paramsWind = {
   center: vavinCenter,
   zoom: 18,
-  layers: ["bati_surf", "bati_zai"],
-  //layers : [],
+  //layers: ["bati_surf", "bati_zai"],
+  layers : [],
   style: muetStyle,
-  tileZoom: true
+  tileZoom: false
 };
 
 let params = paramsWind;
