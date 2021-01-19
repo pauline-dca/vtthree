@@ -9,7 +9,7 @@ import { proj4326, proj3857 } from "./Utils";
 import { Flow } from "three/examples/jsm/modifiers/CurveModifier.js";
 
 //data can be imported like this or read from the data folder
-import windData from "../../data/wind.json";
+import windData from "../../data/wind3.json";
 import { abstract } from "ol/util";
 import { CylinderBufferGeometry, Matrix4, SphereBufferGeometry } from "three";
 import { extendRings } from "ol/extent";
@@ -52,7 +52,9 @@ async function init() {
     opaciteMin : 0,
     newPosFlux : "Fixe",
     contFlux : null,
-    flowLine : false};
+    flowLine : false,
+    enableDifferentScale : "Fixe"
+  }
 
   controller = new VTController(
     width,
@@ -72,8 +74,9 @@ async function init() {
 
   //gui.remember(paramsGUI);
 
+
   var changeTaille = menuMesh.add(paramsGUI, "tailleMesh", 0.5, 5, 0.1).name("Taille").listen();
-  changeTaille.onChange(function(value){
+  changeTaille.onChange(function(value){ //FAIRE POUR QUE ÇA NE RECHARGE PAS SI C'ÉTAIT DÉJÀ ÇA
     if (paramsGUI.typeMesh == "Cylindre"){ //only with Cylindre
       controller.threeViewer.scene.traverse(function(obj){
         if (obj.name == "flow" || obj.name == "skyFlow"){ 
@@ -104,6 +107,11 @@ async function init() {
     else{
       console.log("Impossible de modifier la taille avec ce type de Mesh (cylindre uniquement");
     }
+  });
+
+  var changeDifferentScale = menuMesh.add(paramsGUI, "enableDifferentScale", ["Fixe", "Adapté"]).name("Nombre flux").listen();
+  changeDifferentScale.onChange(function(value){
+    controller.enableDifferentScale = value;
   });
 
   var changeOpaciteMax = menuMesh.add(paramsGUI, "opaciteMax", 0, 1, 0.01).name("Opacité Max").listen();
@@ -174,7 +182,7 @@ async function init() {
   var changeGeometry = menuMesh.add(paramsGUI, "typeMesh", ["Cylindre", "Sphere", "Particule"]).name("Forme").listen();
   changeGeometry.onChange(function(value){
     // possible values are for the time being : cylinder, sphere (Particle to come)
-    
+    controller.typeMesh = value;
     if (value == "Particule"){
       var particles = new THREE.Geometry();
       var pMaterial = new THREE.PointsMaterial({
@@ -206,7 +214,7 @@ async function init() {
           obj.children[0].material.dispose();
           controller.threeViewer.scene.remove(obj.children[0]);
           obj.remove(obj.children[0]);
-          orientateMesh(mesh, obj.speedX, obj.speedY, obj.speedZ, obj.size);
+          controller.orientateMesh(mesh, obj.speedX, obj.speedY, obj.speedZ, obj.size);
           obj.add(mesh);
         }
         else if (value == "Particule"){
@@ -228,9 +236,10 @@ async function init() {
 
   });
 
-  var flowLine = addObjects();
+  var flowLine = controller.addObjects(3, "Cylindre"); //3 for the initial zoomLevel  , Cylindre as initial mesh
   controller.flowLine = flowLine;
 }
+
 
 function orientateMesh(mesh, speedX, speedY, speedZ, length){
   mesh.applyMatrix4(new Matrix4().makeScale(1, length, 1));
@@ -262,7 +271,7 @@ function orientateMesh(mesh, speedX, speedY, speedZ, length){
     }
   }
 }
-
+/*
 function addObjects() {
   
   windData.forEach(function(point){
@@ -318,7 +327,7 @@ function addObjects() {
     
 
 
-  }); 
+  //}); 
 
   //TESTS WITH CURVES
   /*
@@ -372,7 +381,7 @@ function addObjects() {
   return flowLine;
   */
 
-  return null;
-}
+  //return null;
+//}
 
 init();

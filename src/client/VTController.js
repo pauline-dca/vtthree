@@ -4,8 +4,20 @@ import { OLViewer, IGN_STYLES } from "./OLViewer";
 import Feature from "ol/Feature";
 import { ZOOM_RES_L93 } from "./Utils";
 import { Euler, Vector3 } from "three";
-import { distance } from "@turf/turf";
+import { distance, rhumbDistance } from "@turf/turf";
 import * as dat from 'dat.gui';
+
+//Scale data imports
+import windDataHighScale from "../../data/wind1.json";
+import windDataMediumScale from "../../data/wind2.json";
+import windDataLowScale from "../../data/wind3.json";
+
+//From-index.js imports
+import { CylinderBufferGeometry, Matrix4, SphereBufferGeometry } from "three";
+import "regenerator-runtime/runtime";
+import proj4 from "proj4";
+import { proj4326, proj3857 } from "./Utils";
+
 
 
 export class VTController {
@@ -37,6 +49,8 @@ export class VTController {
     this.opaciteMin = paramsGUI.opaciteMin;
     this.reposFlux = paramsGUI.newPosFlux;
     this.typeFourchette = paramsGUI.typeFourchette;
+    this.enableDifferentScale = paramsGUI.enableDifferentScale;
+    this.typeMesh = paramsGUI.typeMesh;
   }
 
   async init(center, zoom, renderMode, style, tileZoom) {
@@ -48,7 +62,8 @@ export class VTController {
       center,
       ZOOM_RES_L93[zoom]
     );
-    this.olViewer = await new OLViewer(
+
+    /*this.olViewer = await new OLViewer(
       this.width,
       this.height,
       center,
@@ -68,14 +83,48 @@ export class VTController {
       self.state.loading++;
     });
 
-    this.olViewer.layer.getSource().on("tileloadend", this.loadTileFeatures);
+    this.olViewer.layer.getSource().on("tileloadend", this.loadTileFeatures);*/
 
+    this.currentZoomLevel = 3
+
+    this.threeViewer.renderer.domElement.addEventListener("wheel", event => {
+      var i = 0
+      //Emptying the scene from the current Meshes without touching the Groups and the rest
+      this.threeViewer.scene.traverse(function(obj){
+        if (obj.children.length == 0){
+          i++;
+        }
+      });
+      console.log(i);
+  
+      var zoom = this.threeViewer.controls.target.distanceTo(this.threeViewer.controls.object.position);
+      console.log(zoom);
+      var instantZoomLevel = this.currentZoomLevel;
+      if (zoom > 1000){
+        instantZoomLevel = 3;
+      }
+      else if (zoom > 600){
+        instantZoomLevel = 2;
+      }
+      else{
+        instantZoomLevel = 1;
+      }
+      if (instantZoomLevel != this.currentZoomLevel){ //zoom level changed !
+        console.log(this.currentZoomLevel, instantZoomLevel);
+        this.currentZoomLevel = instantZoomLevel;
+        if (this.enableDifferentScale == "Adapté"){
+          this.changeFlowDensity(instantZoomLevel);
+        }
+      }
+    });
+
+    /*
     if (this.tileZoom) {
       this.threeViewer.renderer.domElement.addEventListener("wheel", event => {
         //console.log("wheeeel ");
         self.zoomOlViewer(event);
       });
-    }
+    }*/
 
     this.render();
   }
@@ -172,7 +221,7 @@ export class VTController {
     //var zoom = controls.target.distanceTo( controls.object.position )
     //console.log(this.threeViewer.controls.target.distanceTo(this.threeViewer.controls.object.position));
     //this.olViewer.domElement.dispatchEvent(
-    this.olViewer.map.getViewport().dispatchEvent(
+    /*this.olViewer.map.getViewport().dispatchEvent(
       new WheelEvent("wheel", {
         // deltaX: event.deltaX,
         // deltaY: event.deltaY,
@@ -183,7 +232,7 @@ export class VTController {
         screenX: event.screenX,
         screenY: event.screenY
       })
-    );
+    );*/
     event.preventDefault();
   }
 
@@ -227,5 +276,177 @@ export class VTController {
         self.state.loading--;
       });
     }
+  }
+
+  orientateMesh(mesh, speedX, speedY, speedZ, length){
+    mesh.applyMatrix4(new Matrix4().makeScale(1, length, 1));
+    mesh.rotateOnWorldAxis(new THREE.Vector3(1,0,0), Math.atan(speedZ/length)); //rotation X (direction haut bas)
+  
+    //Rotation handling :
+    
+    if (speedX >= 0){ //vitesse en longitude, selon les x
+      if (speedY >= 0){ //vitesse en latitude, selon les y
+        //quart haut droit du cercle trigo, si l'on place les x au nord, car l'orientation de base des meshs est dirigée vers les y
+        mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), - Math.atan(speedX/speedY)); //rotation selon Z (direction lat lon)
+      }
+      else{
+        //quart bas droit
+        mesh.material.color.set("red");
+        mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), - Math.atan(speedX/speedY) - Math.PI);
+      }
+    }
+    else{
+      if (speedY >= 0){
+        //quart haut gauche
+        mesh.material.color.set("green");
+        mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.atan(speedY/speedX) + Math.PI/2);
+      }
+      else{
+        //quart bas gauche
+        mesh.material.color.set("blue");
+        mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.PI/2 + Math.atan(speedY/speedX));
+      }
+    }
+  }
+  
+  addObjects(zoomLevel, meshType) {
+
+    console.log(zoomLevel);
+
+    var windData;
+    if (zoomLevel == 3){
+      windData = windDataLowScale;
+    }
+    else if (zoomLevel == 2){
+      windData = windDataMediumScale;
+    }
+    else{
+      windData = windDataHighScale;
+    }
+    
+    windData.forEach(function(point){
+      
+      //Initial buffer geometries
+  
+      var flowWidthTop = 0.2*(2**zoomLevel);
+      var flowWidthBottom = 0.01;
+  
+      if (meshType == "Cylindre"){ //ATTENTION ! FAUT ADAPTER TOUTE CETTE FONCTION AUX CHANGEMENTS DE ZOOM, POUR QUE LES PARAMS DU MENU SOIENT PRIS EN COMPTE
+        var p = new THREE.CylinderBufferGeometry(flowWidthTop, flowWidthBottom);
+      }
+      else if (meshType == "Sphere"){
+        var p = new THREE.SphereBufferGeometry(1);
+      }
+
+  
+      // Some main parameters for the flows, to be modified depending on the context...
+      var coef = 2*zoomLevel;
+      var flowSize = coef*Math.sqrt(point.u**2 + point.v**2 + point.w**2);
+      var m = new THREE.MeshStandardMaterial({color : "black", opacity: 1, transparent: true});
+      var mesh = new THREE.Mesh(p, m);
+      this.orientateMesh(mesh, point.u, point.v, point.w, flowSize);
+  
+      //Postionning the objects
+      var cooWebMerca = proj4(proj4326, proj3857, [point.lon, point.lat]);
+      var goodCoords = this.threeViewer.getWorldCoords(cooWebMerca);
+  
+      var flow = new THREE.Group();
+      flow.add(mesh);
+      if (point.z > 50){
+        flow.name = "skyFlow";
+      }
+      else{
+        flow.name = "flow";
+      }
+  
+      flow.initPosX = goodCoords[0];
+      flow.initPosY = goodCoords[1];
+      flow.initPosZ = point.z;
+      flow.currentZ = point.z;
+      flow.position.x = goodCoords[0];
+      flow.position.y = goodCoords[1];
+      flow.position.z = point.z
+      flow.speedX = point.u;
+      flow.speedY = point.v;
+      flow.speedZ = point.w;
+      flow.size = flowSize;
+      flow.currentScale = 1;
+  
+      this.threeViewer.scene.add(flow);
+  
+    }.bind(this)); 
+  
+    //TESTS WITH CURVES
+    /*
+  
+    const curveHandles = [];
+  
+    var lstCurve = [
+      { x: 50, y: -800, z: 120 },
+      { x: 0, y: 0, z: 120 },
+      { x: -200, y: 200, z: 120 },
+    ];
+  
+    
+  
+    const boxGeometry = new THREE.BoxBufferGeometry( 0.1, 0.1, 0.1 );
+    const boxMaterial = new THREE.MeshBasicMaterial();
+  
+    for ( const handlePos of lstCurve ) {
+  
+      const handle = new THREE.Mesh( boxGeometry, boxMaterial );
+      handle.position.copy( handlePos );
+      curveHandles.push( handle );
+      this.threeViewer.scene.add( handle );
+  
+    }
+    const curve = new THREE.CatmullRomCurve3(curveHandles.map((handle) => handle.position));
+    curve.curveType = "centripetal";
+    //curve.closed = true;
+  
+    const points = curve.getPoints( 50 );
+    const line = new THREE.LineLoop(
+      new THREE.BufferGeometry().setFromPoints( points ),
+      new THREE.LineBasicMaterial({color: "black"})
+    );
+  
+    this.threeViewer.scene.add( line );
+  
+    //geometry to be placed along the curve
+    var rect = new THREE.SphereBufferGeometry(5,8,6);
+  
+    //rect.rotateY(-Math.PI/2);
+  
+    const objectToCurve = new THREE.Mesh(rect, new THREE.MeshStandardMaterial({color: 0x99ffff}));
+    objectToCurve.name = "toBeMoved";
+    const flowLine = new Flow(objectToCurve);
+  
+    flowLine.updateCurve(0, curve);
+    flowLine.name = "curve";
+    this.threeViewer.scene.add(flowLine.object3D);
+  
+    return flowLine;
+    */
+  
+    return null;
+  }
+
+  //AJOUT NATHAN : PERMET D'ADAPTER LE NOMBRE DE FLUX VISIBLES SELON LE NIVEAU DE ZOOM
+  changeFlowDensity(zoomLevel){
+    
+    this.threeViewer.scene.traverse(function(obj){
+      if (obj.name == "flow" || obj.name == "skyFlow"){
+
+        if (obj.children.length > 0){
+          obj.children[0].geometry.dispose();
+          obj.children[0].material.dispose();
+          this.threeViewer.scene.remove(obj.children[0]);
+          obj.remove(obj.children[0]);
+        }
+      }
+    }.bind(this));
+    this.threeViewer.scene.clear();
+    this.addObjects(zoomLevel, this.typeMesh);
+
   }
 }

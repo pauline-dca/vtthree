@@ -28,6 +28,7 @@ export class VTThreeViewer {
     this.doubleClick = this.doubleClick.bind(this);
     this.initThree(backgroundColor);
     this.addHemisphereLights2();
+    //this.controls = null; //ajout nathan, pour donner l'accès à l'OrbitControl par la suite, dans VTController
   }
 
   initThree(backgroundColor) {
