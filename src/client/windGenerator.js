@@ -35,8 +35,8 @@ var geometrySky = {
     [
       proj4(proj3857, proj4326, [258500, 6247500.5]),
       proj4(proj3857, proj4326, [259900.57, 6247500.44]),
-      proj4(proj3857, proj4326, [258500.68, 6249200.81]),
-      proj4(proj3857, proj4326, [259900.62, 6249200.88]),
+      proj4(proj3857, proj4326, [259900.68, 6249200.81]),
+      proj4(proj3857, proj4326, [258500.62, 6249200.88]),
     ]
   ]
 };
@@ -65,17 +65,17 @@ for (var j = 1; j < nbScale + 1; j++){
       let y = (bbox[3] + bbox[1]) / 2;
 
       //AJOUT NATHAN : VENT PSEUDO-RÉEL, LÉGÈREMENT INCLINÉ
-      //let Z = 5 + Math.random()*50; //on utilise la hauteur pour
+      //let Z = 5 + Math.random()*50;
       //let Z = 0
       let randomCoef = modifier*Math.log10(i);
       //let Z = 5 + i/10*Math.cos(alpha);
       let Z = 15;
       //let randomCoef = 3*Math.random() //permet de faire varier la vitesse tout en gardant la même direction, et en fonction de la hauteur (pour l'exemple)
-      let dirU = randomCoef * -4*Math.sin(alpha*j);
-      let dirV = randomCoef * 4*Math.cos(alpha*j);
+      let dirU = randomCoef * -4*Math.sin(alpha);
+      let dirV = randomCoef * 4*Math.cos(alpha);
       //let dirW = randomCoef * 4*Math.cos(1.3*alpha);
       let dirW = 0;
-      alpha -= 4/gridCorridor.features.length;
+      alpha -= 4/gridCorridor.features.length/j;
 
       result.push({ lat: y, lon: x, z: Z, u: dirU, v: dirV, w : dirW});
       i = i + 1
@@ -98,11 +98,11 @@ for (var j = 1; j < nbScale + 1; j++){
       //let Z = 5 + i/10*Math.cos(alpha);
       let Z = 60;
       //let randomCoef = 3*Math.random() //permet de faire varier la vitesse tout en gardant la même direction, et en fonction de la hauteur (pour l'exemple)
-      let dirU = randomCoef * -4*Math.sin(alpha*j);
-      let dirV = randomCoef * 4*Math.cos(alpha*j);
+      let dirU = randomCoef * -4*Math.sin(alpha);
+      let dirV = randomCoef * 4*Math.cos(alpha);
       //let dirW = randomCoef * 4*Math.cos(1.3*alpha);
       let dirW = 0;
-      alpha -= 4/gridSky.features.length;
+      alpha -= 4*j/gridSky.features.length/j;
 
       result.push({ lat: y, lon: x, z: Z, u: dirU, v: dirV, w : dirW});
       i = i + 1

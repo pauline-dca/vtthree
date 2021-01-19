@@ -51,6 +51,7 @@ export class VTController {
     this.typeFourchette = paramsGUI.typeFourchette;
     this.enableDifferentScale = paramsGUI.enableDifferentScale;
     this.typeMesh = paramsGUI.typeMesh;
+    this.tailleMesh = paramsGUI.tailleMesh;
   }
 
   async init(center, zoom, renderMode, style, tileZoom) {
@@ -63,7 +64,7 @@ export class VTController {
       ZOOM_RES_L93[zoom]
     );
 
-    /*this.olViewer = await new OLViewer(
+    this.olViewer = await new OLViewer(
       this.width,
       this.height,
       center,
@@ -83,22 +84,18 @@ export class VTController {
       self.state.loading++;
     });
 
-    this.olViewer.layer.getSource().on("tileloadend", this.loadTileFeatures);*/
+    this.olViewer.layer.getSource().on("tileloadend", this.loadTileFeatures);
+    /*this.threeViewer.scene.traverse(function(obj){
+      console.log(obj);
+    });*/
+
 
     this.currentZoomLevel = 3
 
     this.threeViewer.renderer.domElement.addEventListener("wheel", event => {
-      var i = 0
-      //Emptying the scene from the current Meshes without touching the Groups and the rest
-      this.threeViewer.scene.traverse(function(obj){
-        if (obj.children.length == 0){
-          i++;
-        }
-      });
-      console.log(i);
-  
+ 
       var zoom = this.threeViewer.controls.target.distanceTo(this.threeViewer.controls.object.position);
-      console.log(zoom);
+      
       var instantZoomLevel = this.currentZoomLevel;
       if (zoom > 1000){
         instantZoomLevel = 3;
@@ -110,7 +107,7 @@ export class VTController {
         instantZoomLevel = 1;
       }
       if (instantZoomLevel != this.currentZoomLevel){ //zoom level changed !
-        console.log(this.currentZoomLevel, instantZoomLevel);
+        
         this.currentZoomLevel = instantZoomLevel;
         if (this.enableDifferentScale == "Adapté"){
           this.changeFlowDensity(instantZoomLevel);
@@ -143,7 +140,7 @@ export class VTController {
 
         var scale = flow.size
 
-        //RESETING POSITION IF NECESSARY
+        //CHANGE THIS FOR DISTANCE/LENGHT OF LIFE PARAM
         var coef = 1;
         
         var currentDistanceFromInit = Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2 + (flow.currentZ - flow.position.z)**2);
@@ -283,6 +280,7 @@ export class VTController {
     mesh.rotateOnWorldAxis(new THREE.Vector3(1,0,0), Math.atan(speedZ/length)); //rotation X (direction haut bas)
   
     //Rotation handling :
+    //console.log(speedX, speedY);
     
     if (speedX >= 0){ //vitesse en longitude, selon les x
       if (speedY >= 0){ //vitesse en latitude, selon les y
@@ -328,23 +326,27 @@ export class VTController {
       
       //Initial buffer geometries
   
-      var flowWidthTop = 0.2*(2**zoomLevel);
-      var flowWidthBottom = 0.01;
+      var m = new THREE.MeshStandardMaterial({color : "black", opacity: 1, transparent: true});
+      var flowSize = Math.sqrt(point.u**2 + point.v**2 + point.w**2);
   
       if (meshType == "Cylindre"){ //ATTENTION ! FAUT ADAPTER TOUTE CETTE FONCTION AUX CHANGEMENTS DE ZOOM, POUR QUE LES PARAMS DU MENU SOIENT PRIS EN COMPTE
+        var flowWidthTop = 0.2*(2**zoomLevel);
+        var flowWidthBottom = 0.01;
         var p = new THREE.CylinderBufferGeometry(flowWidthTop, flowWidthBottom);
+        var mat = new Matrix4().makeScale(1, this.tailleMesh, 1);
+        var mesh = new THREE.Mesh(p, m);
+        mesh.applyMatrix4(mat);
+        this.orientateMesh(mesh, point.u, point.v, point.w, flowSize);
       }
       else if (meshType == "Sphere"){
-        var p = new THREE.SphereBufferGeometry(1);
+        var p = new THREE.SphereBufferGeometry(this.tailleMesh);
+        var mesh = new THREE.Mesh(p, m);
+
       }
 
   
       // Some main parameters for the flows, to be modified depending on the context...
-      var coef = 2*zoomLevel;
-      var flowSize = coef*Math.sqrt(point.u**2 + point.v**2 + point.w**2);
-      var m = new THREE.MeshStandardMaterial({color : "black", opacity: 1, transparent: true});
-      var mesh = new THREE.Mesh(p, m);
-      this.orientateMesh(mesh, point.u, point.v, point.w, flowSize);
+
   
       //Postionning the objects
       var cooWebMerca = proj4(proj4326, proj3857, [point.lon, point.lat]);
@@ -370,7 +372,7 @@ export class VTController {
       flow.speedY = point.v;
       flow.speedZ = point.w;
       flow.size = flowSize;
-      flow.currentScale = 1;
+      flow.currentScale = this.tailleMesh;
   
       this.threeViewer.scene.add(flow);
   
@@ -432,7 +434,7 @@ export class VTController {
   }
 
   //AJOUT NATHAN : PERMET D'ADAPTER LE NOMBRE DE FLUX VISIBLES SELON LE NIVEAU DE ZOOM
-  changeFlowDensity(zoomLevel){
+  async changeFlowDensity(zoomLevel){
     
     this.threeViewer.scene.traverse(function(obj){
       if (obj.name == "flow" || obj.name == "skyFlow"){
@@ -442,9 +444,13 @@ export class VTController {
           obj.children[0].material.dispose();
           this.threeViewer.scene.remove(obj.children[0]);
           obj.remove(obj.children[0]);
+          if (obj instanceof THREE.Group){
+            this.threeViewer.scene.remove(obj);
+          }
         }
       }
     }.bind(this));
+    
     this.threeViewer.scene.clear();
     this.addObjects(zoomLevel, this.typeMesh);
 

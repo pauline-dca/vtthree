@@ -29,8 +29,8 @@ let withFlowLine = false;
 const paramsWind = {
   center: vavinCenter,
   zoom: 18,
-  //layers: ["bati_surf", "bati_zai"],
-  layers : [],
+  layers: ["bati_surf", "bati_zai"],
+  //layers : [],
   style: muetStyle,
   tileZoom: false
 };
@@ -47,7 +47,7 @@ async function init() {
     typeMesh : "Cylindre",
     geomFlux : "mesh",
     nbFlux : 10,
-    speedFlux : 0.05,
+    speedFlux : 0.01,
     opaciteMax : 0.55,
     opaciteMin : 0,
     newPosFlux : "Fixe",
@@ -77,10 +77,12 @@ async function init() {
 
   var changeTaille = menuMesh.add(paramsGUI, "tailleMesh", 0.5, 5, 0.1).name("Taille").listen();
   changeTaille.onChange(function(value){ //FAIRE POUR QUE ÇA NE RECHARGE PAS SI C'ÉTAIT DÉJÀ ÇA
+    controller.tailleMesh = value;
     if (paramsGUI.typeMesh == "Cylindre"){ //only with Cylindre
       controller.threeViewer.scene.traverse(function(obj){
         if (obj.name == "flow" || obj.name == "skyFlow"){ 
           var mat = new Matrix4().makeScale(1, value/obj.currentScale, 1);
+          obj.currentScale = value;
           var quaternion = new THREE.Quaternion();
           obj.children[0].getWorldQuaternion(quaternion);
           obj.children[0].rotation.set(0,0,0);
@@ -90,11 +92,12 @@ async function init() {
         }
       });
     }
-    else if (paramsGUI.typeMesh == "Sphere"){ //MARCHE MAIS RAME DU CUL
+    else if (paramsGUI.typeMesh == "Sphere"){ //MARCHE MAIS RAME
       controller.threeViewer.scene.traverse(function(obj){
         if (obj.name == "flow" || obj.name == "skyFlow"){
           var oldMaterial = obj.children[0].material.clone();
           var geomSphere = new THREE.SphereBufferGeometry(value);
+          obj.currentScale = value;
           var meshSphere = new Mesh(geomSphere, oldMaterial);
           obj.children[0].geometry.dispose();
           obj.children[0].material.dispose();
@@ -124,7 +127,7 @@ async function init() {
     controller.opaciteMin = value;
   });
 
-  var changeSpeed = menuMesh.add(paramsGUI, "speedFlux", 0, 1, 0.01).name("Vitesse").listen();
+  var changeSpeed = menuMesh.add(paramsGUI, "speedFlux", 0, 0.2, 0.005).name("Vitesse").listen();
   changeSpeed.onChange(function(value){
     controller.baseSpeed = value;
   });
@@ -196,7 +199,7 @@ async function init() {
     controller.threeViewer.scene.traverse(function(obj){
       if (obj.name == "flow" || obj.name == "skyFlow"){
         if (value == "Sphere"){
-          var p = new THREE.SphereBufferGeometry(1);
+          var p = new THREE.SphereBufferGeometry(controller.tailleMesh);
           var m = obj.children[0].material.clone();
           var mesh = new THREE.Mesh(p, m);
           obj.children[0].geometry.dispose();
@@ -207,9 +210,11 @@ async function init() {
 
         }
         else if (value == "Cylindre"){
-          var p = new THREE.CylinderBufferGeometry(0.2, 0.01);
+          var p = new THREE.CylinderBufferGeometry(0.2*(2**controller.currentZoomLevel), 0.01);
+          var mat = new Matrix4().makeScale(1, controller.tailleMesh, 1);
           var m = obj.children[0].material.clone();
           var mesh = new THREE.Mesh(p, m);
+          mesh.applyMatrix4(mat);
           obj.children[0].geometry.dispose();
           obj.children[0].material.dispose();
           controller.threeViewer.scene.remove(obj.children[0]);
