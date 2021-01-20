@@ -10,20 +10,25 @@ import { planStyle, grisStyle, muetStyle } from "./OLViewer";
 import proj4 from "proj4";
 import { proj4326, proj3857 } from "./Utils";
 import helvetiker from "../../node_modules/three/examples/fonts/helvetiker_regular.typeface.json"
+import Stats from "stats";
+import {ConvexGeometry} from "./ConvexGeometry";
 
 //data can be imported like this or read from the data folder
 import covidData from "../../data/covid_data.json";
+import clusterCovidData from "../../data/clusters.json";
+
 import * as geotiff from "geotiff";
+import { Vector3 } from "three";
 
 const width = window.innerWidth; // this makes the 3D canvas full screen
 const height = window.innerHeight; // this makes the 3D canvas full screen
 const zSize = 300; //Represent the size on the 3D modelisation. The value 300 is arbitrary
 const nbrDaysMax = 100; //Number of days from the first entry that can be displayed
-/*
-var hexRadius = 50; //Resolution of the hexgrid 
-var nbrDaysAgregation = 7; //Temporal resolution
-var coeffRadius = 2; //Coefficient to adapt the size of 3D object
-*/
+
+let raycaster, renderer;
+let INTERSECTED;
+const mouse = new THREE.Vector2();
+
 let parisLatLon = [48.8534, 2.3488];
 let parisCenter = proj4(proj4326, proj3857, [parisLatLon[1], parisLatLon[0]]);
 
@@ -42,6 +47,18 @@ var temposcale = new TempoScale(0,nbrDaysMax);
 let params = paramsCovid;
 let controller = null;
 async function init() {
+
+  //create element for raycasting
+  let container = document.createElement( 'div' );
+  document.body.appendChild( container );
+  raycaster = new THREE.Raycaster();
+  renderer = new THREE.WebGLRenderer();
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+  container.appendChild( renderer.domElement );
+  document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+  
   // to read tiff file: https://geotiffjs.github.io/geotiff.js/. other files to be read should be added to the data folder
   // let tiffData = await geotiff.fromUrl("Hauteurs.tif");
   controller = new VTController(
@@ -81,6 +98,18 @@ async function init() {
   scaleGroup.name = "scaleGroup";
   addTempoScaleLabel(scaleGroup);
   
+  //Adding the clusters
+  const clustersGroup = new THREE.Group();
+  clustersGroup.name = "clustersGroup";
+  addClusters(clustersGroup);
+
+}
+
+//Track mouse position
+function onDocumentMouseMove( event ) {
+  event.preventDefault();
+  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1
 }
 
 // Functions to switch between date and vertical coordinates
@@ -142,7 +171,7 @@ function addObjects(covidCaseGroup) {
       ]);
       let worldCoords = controller.threeViewer.getWorldCoords(tokenCenter); // the getWorldCoords function transform webmercator coordinates into three js world coordinates
       var geometry = new THREE.BoxBufferGeometry(5, 5, 5);
-      var material = new THREE.MeshStandardMaterial({ color: 0xff4500 });
+      var material = new THREE.MeshStandardMaterial({ color: "#C6F499" });
       var cube = new THREE.Mesh(geometry, material); //a three js mesh needs a geometry and a material
       cube.position.x = worldCoords[0];
       cube.position.y = worldCoords[1];
@@ -192,6 +221,40 @@ function addTempoScaleLabel(scaleGroup){
     
   }
   controller.threeViewer.scene.add(scaleGroup); //the group is added to the scene
+}
+
+
+// Adding the clusters
+function addClusters(clustersGroup){
+  let vectorArray;
+  let pointsCloud;
+  for (let clusters in clusterCovidData){
+    vectorArray = [];
+    pointsCloud = clusterCovidData[clusters]["cluster"];
+    //pointsCloud = clusterCovidData[0]["cluster"];
+    for (let clusterPoint in pointsCloud){
+      //Creation of the point cloud
+      let tokenLatLon = [
+        parseFloat(pointsCloud[clusterPoint][1]),
+        parseFloat(pointsCloud[clusterPoint][0])
+      ];
+      let tokenCenter = proj4(proj4326, proj3857, [
+        tokenLatLon[1],
+        tokenLatLon[0]
+      ]);
+      let worldCoords = controller.threeViewer.getWorldCoords(tokenCenter); // the getWorldCoords function transform webmercator coordinates into three js world coordinates
+      vectorArray.push(new Vector3(worldCoords[0],worldCoords[1],(pointsCloud[clusterPoint][2]-temposcale.min)*(zSize/(temposcale.max-temposcale.min))));
+    }
+          
+    var geometry = new ConvexGeometry(vectorArray);
+    var material = new THREE.MeshStandardMaterial({ color: 0xff4500 });
+    material.transparent = true;
+    material.opacity = 0.5;
+    var cluster = new THREE.Mesh(geometry, material); //a three js mesh needs a geometry and a material
+    clustersGroup.add(cluster); // all the cases are added to the group
+  
+}
+controller.threeViewer.scene.add(clustersGroup); //the group is added to the scene
 
 }
 
@@ -222,28 +285,6 @@ function hexAgregation(hexCovidCaseGroup, hexRadius = 50, nbrDaysAgregation = 7,
       });
   }
 
-  /*
-  var pointGrid = getPointGrid(hexRadius)
-
-  //visualisation of the hexagrid
-  for (let elm in pointGrid){
-    var geometry = new THREE.PlaneGeometry(5,5);
-    var material = new THREE.MeshStandardMaterial({ color: 0x5FD527 });
-    var cube = new THREE.Mesh(geometry, material); 
-    cube.position.x = pointGrid[elm]["x"];
-    cube.position.y = pointGrid[elm]["y"];
-    cube.position.z = 0;
-    controller.threeViewer.scene.add(cube);
-  }
-  */
-
-
-
-  //var dataTest = dataByDate()["2020-03-19"];
-  //console.log(dataTest);
-
-  //var mergedPoints = pointGrid.concat(dataTest);
-
   //creation of the hexagons
   function getHexPoints(mergedPoints) {
     hexbin = d3hexbin.hexbin()
@@ -254,9 +295,6 @@ function hexAgregation(hexCovidCaseGroup, hexRadius = 50, nbrDaysAgregation = 7,
     var hexPoints = hexbin(mergedPoints);
     return hexPoints;
   }
-
-  //var hexPoint = getHexPoints(mergedPoints)
-  //console.log(hexPoint)
 
   //Cleaning and enriching hexagons
   function rollupHexPoints(data) {
@@ -289,24 +327,17 @@ function hexAgregation(hexCovidCaseGroup, hexRadius = 50, nbrDaysAgregation = 7,
     return data;
   }
 
-  //var rollupHexPoint = rollupHexPoints(hexPoint)
-  //console.log(rollupHexPoint)
-
-  //visualisation of the rollupHexPoint
-  /*
-  for (let elm in rollupHexPoint){
-    if (rollupHexPoint[elm]["length"] != 0){
-      var geometry = new THREE.SphereGeometry(rollupHexPoint[elm]["length"]);
-      var material = new THREE.MeshStandardMaterial({ color: 0x5FD527 });
-      var sphere = new THREE.Mesh(geometry, material); 
-      sphere.position.x = rollupHexPoint[elm]["x"];
-      sphere.position.y = rollupHexPoint[elm]["y"];
-      sphere.position.z = 50;
-      controller.threeViewer.scene.add(sphere);
+  //Creating the color gradien
+  function colorFunction(nbrCovid){
+    let grad = ["#C6F499","#A0EF7D","#73EA62","#48E352","#2FDC5A","#27C36F"];
+    let boudaries = [0,3,10,25,50,75];
+    for (let i=0;i<boudaries.length-1;i++){
+      if(nbrCovid>= boudaries[i] && nbrCovid<boudaries[i+1]){
+        return grad[i]
+      }
     }
+    return grad[boudaries.length-1]
   }
-  */
-
 
 
   // Adding the covid cases aggregated on a hexgrid
@@ -324,21 +355,22 @@ function hexAgregation(hexCovidCaseGroup, hexRadius = 50, nbrDaysAgregation = 7,
           if (nbrCovid != 0){
               //var geometry = new THREE.SphereGeometry(hexData[hexCovidCase]["length"]); //using spheres
               //var geometry = new THREE.CylinderGeometry(nbrCovid, nbrCovid,5); // Radius proportional to the number of covid entries
-              var geometry = new THREE.CylinderGeometry(Math.sqrt(nbrCovid)*coeffRadius, Math.sqrt(nbrCovid)*coeffRadius,5); // Area proportional to the number of covid entries
-              var material = new THREE.MeshStandardMaterial({ color: 0x5FD527 });
-              var sphere = new THREE.Mesh(geometry, material); //a three js mesh needs a geometry and a material
-              sphere.position.x = hexData[hexDataDate][hexCovidCase]["x"];
-              sphere.position.y = hexData[hexDataDate][hexCovidCase]["y"];
-              sphere.position.z = dateToAlti(hexDataDate);
-              sphere.name = hexDataDate;
-              sphere.rotation.x = Math.PI / 2;
-              if(sphere.position.z>=0 && sphere.position.z<=zSize){
-                sphere.visible = true;
+              var geometry = new THREE.CylinderBufferGeometry(Math.sqrt(nbrCovid)*coeffRadius, Math.sqrt(nbrCovid)*coeffRadius,5+nbrDaysAgregation); // Area proportional to the number of covid entries, height is arbitrary
+              var colorMesh = colorFunction(nbrCovid);
+              var material = new THREE.MeshStandardMaterial({ color: colorMesh });
+              var cylinder = new THREE.Mesh(geometry, material); //a three js mesh needs a geometry and a material
+              cylinder.position.x = hexData[hexDataDate][hexCovidCase]["x"];
+              cylinder.position.y = hexData[hexDataDate][hexCovidCase]["y"];
+              cylinder.position.z = dateToAlti(hexDataDate);
+              cylinder.name = hexDataDate;
+              cylinder.rotation.x = Math.PI / 2;
+              if(cylinder.position.z>=0 && cylinder.position.z<=zSize){
+                cylinder.visible = true;
               }
               else{
-                sphere.visible = false;
+                cylinder.visible = false;
               }
-              hexCovidCaseGroup.add(sphere); // all the cases are added to the group
+              hexCovidCaseGroup.add(cylinder); // all the cases are added to the group
           }
       }
 
@@ -359,10 +391,6 @@ function hexAgregation(hexCovidCaseGroup, hexRadius = 50, nbrDaysAgregation = 7,
   }
 
   function temporalAggregation(hexCovidCase, hexData, hexDataDate ){ //Return the number of case on a same location during some days
-    /*
-    let firstDate = Number(new Date(covidData[0]["date"]))/86400000; //day of the firt entry
-    return (new Date((days+firstDate)*86400000)).toISOString().slice(0, 10) 
-    */
     let nbrCovid = 0;
     let firstDate = Number(new Date(covidData[0]["date"]))/86400000; //day of the firt entry
     let actualDate = Number(new Date(hexDataDate))/86400000;
@@ -392,7 +420,7 @@ function hexAgregation(hexCovidCaseGroup, hexRadius = 50, nbrDaysAgregation = 7,
 
 init();
 
-/*_____________________ Managing the temporal scale and rendering functon _________________*/
+/*_____________________ Managing the temporal scale _________________*/
 
 
 //Import a gui creating an interface to manage the temporal scale
@@ -406,7 +434,6 @@ cubeFolder.open()
 
 
 function changeTempoScale(){
-  console.log(controller.threeViewer.scene)
   // When we change the temporal zoom, we change the altitude of the covid cases
   for(var elt in controller.threeViewer.scene.children ){
     if(controller.threeViewer.scene.children[elt]["name"]=="covidCaseGroup" || controller.threeViewer.scene.children[elt]["name"].startsWith("hexCovidCaseGroup")){
@@ -490,9 +517,71 @@ agregZoom(3);
 
 var currentZoom = 3; //Zoom of the initial position of the camera
 agregZoom(3);
+
+
+/*_____________________________ Raycasting to select an object ___________________________*/
+
+//Getting the intersection only in the group displayed
+function raycasterIntersect(raycaster, currentZoom){
+  for(let elt in controller.threeViewer.scene.children){
+    if(controller.threeViewer.scene.children[elt]["name"]=="covidCaseGroup" && currentZoom == 1){
+      return raycaster.intersectObjects( controller.threeViewer.scene.children[elt].children);
+    }
+    else if(controller.threeViewer.scene.children[elt]["name"]=="hexCovidCaseGroup2" && currentZoom == 2){
+      return raycaster.intersectObjects( controller.threeViewer.scene.children[elt].children);
+    }
+    else if(controller.threeViewer.scene.children[elt]["name"]=="hexCovidCaseGroup3" && currentZoom == 3){
+      return raycaster.intersectObjects( controller.threeViewer.scene.children[elt].children);
+    }
+    else if(controller.threeViewer.scene.children[elt]["name"]=="hexCovidCaseGroup4" && currentZoom == 4){
+      return raycaster.intersectObjects( controller.threeViewer.scene.children[elt].children);
+    }
+  }
+}
+
+// Position of the mouse at the begining of a "pointerdown"
+var detaX=0;
+var deltaY=0;
+
+function clickPosition(){
+  detaX = mouse.x;
+  deltaY = mouse.y;
+}
+
+function clickOnMap(){
+  let distClick = detaX - (( event.clientX / window.innerWidth ) * 2 - 1) + deltaY - (- ( event.clientY / window.innerHeight ) * 2 + 1);
+  if (Math.abs(distClick)<0.01){ // we select the object only when not doing a rotation
+    raycaster.setFromCamera( mouse, controller.threeViewer.currentCamera );
+    const intersects = raycasterIntersect(raycaster, currentZoom);
+    if ( intersects.length > 0 ) {
+        if ( INTERSECTED != intersects[ 0 ].object ) {
+        if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+        INTERSECTED = intersects[ 0 ].object;
+        INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+        INTERSECTED.material.emissive.setHex( 0xff0000 );
+        //Display informations about the object
+        infoPannel.innerHTML = "Date : "+INTERSECTED["name"];
+        infoPannel.style.left = (event.clientX + 20)+"px";
+        infoPannel.style.top = (event.clientY -5)+"px";
+        infoPannel.style.visibility = "visible";
+      }
+    } else {
+      if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+      INTERSECTED = null;
+      infoPannel.style.visibility = "hidden";
+    }
+  }
+}
+
+
+let infoPannel = document.getElementById("infoPannel");
+document.addEventListener("pointerdown",clickPosition);
+document.addEventListener("pointerup",clickOnMap);
+
+/*_____________________________ rendering funciton ___________________________*/
 function render(){
   controller.threeViewer.animate();
-  // Updatingd the rotation of texts to make them facing the user
+  // Updating the rotation of texts to make them facing the user
   for(let elt in controller.threeViewer.scene.children){
     if(controller.threeViewer.scene.children[elt]["name"]=="scaleGroup"){
       for(var groupElt in controller.threeViewer.scene.children[elt].children){
@@ -520,10 +609,9 @@ function render(){
     currentZoom = 4;
     agregZoom(currentZoom);
   }
-  
+
   // The render() function is called at eatch frame
   requestAnimationFrame(render);
 };
 
 render();
-

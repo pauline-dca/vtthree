@@ -13,14 +13,10 @@ for (let i = 0; i < cases.length; i++) {
   vectors[i] = [cases[i]["lon"], cases[i]["lat"], diffDays];
 }
 
-kmeans.clusterize(vectors, { k: 10 }, (err, res) => {
+kmeans.clusterize(vectors, { k: 100 }, (err, res) => {
   if (err) console.error(err);
   else {
     let data = JSON.stringify(res);
-    fs.writeFileSync("data/clusters.json", data);
+    fs.writeFileSync("data/clusters100.json", data);
   }
-<<<<<<< HEAD
 });
-=======
-});
->>>>>>> a6bd488d04bdeef57f1849a21593e47ec058c362
