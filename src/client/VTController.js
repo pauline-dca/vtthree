@@ -67,7 +67,7 @@ export class VTController {
       ZOOM_RES_L93[zoom]
     );
 
-    /*this.olViewer = await new OLViewer(
+    this.olViewer = await new OLViewer(
       this.width,
       this.height,
       center,
@@ -87,7 +87,7 @@ export class VTController {
       self.state.loading++;
     });
 
-    this.olViewer.layer.getSource().on("tileloadend", this.loadTileFeatures);*/
+    this.olViewer.layer.getSource().on("tileloadend", this.loadTileFeatures);
 
     this.currentZoomLevel = 3
 

@@ -29,8 +29,8 @@ let withFlowLine = false;
 const paramsWind = {
   center: vavinCenter,
   zoom: 18,
-  //layers: ["bati_surf", "bati_zai"],
-  layers : [],
+  layers: ["bati_surf", "bati_zai"],
+  //layers : [],
   style: muetStyle,
   tileZoom: false
 };
@@ -74,7 +74,7 @@ async function init() {
   var gui = new dat.GUI({name: "First GUI", hideable: true});
   var menuMesh = gui.addFolder("Mesh");
 
-  //gui.remember(paramsGUI);
+  //gui.remember(paramsGUI); NEVER UNDERSTOOD WHAT THIS WAS USEFUL FOR
 
   var changeDureeVie = menuMesh.add(paramsGUI, "dureeVie", 1, 100, 0.05).name("Parcours Flux").listen();
   changeDureeVie.onChange(function(value){
@@ -82,9 +82,9 @@ async function init() {
   });
 
   var changeTaille = menuMesh.add(paramsGUI, "tailleMesh", 0.5, 5, 0.1).name("Taille").listen();
-  changeTaille.onChange(function(value){ //FAIRE POUR QUE ÇA NE RECHARGE PAS SI C'ÉTAIT DÉJÀ ÇA
+  changeTaille.onChange(function(value){
     controller.tailleMesh = value;
-    if (paramsGUI.typeMesh == "Cylindre"){ //only with Cylindre
+    if (paramsGUI.typeMesh == "Cylindre"){
       controller.threeViewer.scene.traverse(function(obj){
         if (obj.name == "flow" || obj.name == "skyFlow"){ 
           var mat = new Matrix4().makeScale(1, value/obj.currentScale, 1);
@@ -93,12 +93,11 @@ async function init() {
           obj.getWorldQuaternion(quaternion);
           obj.rotation.set(0,0,0);
           obj.children[0].applyMatrix4(mat);
-          //obj.currentScale = value;
           obj.applyQuaternion(quaternion);
         }
       });
     }
-    else if (paramsGUI.typeMesh == "Sphere"){ //MARCHE MAIS RAME
+    else if (paramsGUI.typeMesh == "Sphere"){ //A BIT SLOW, SINCE ALL MESHES ARE DELETED AND RE-ADDED
       controller.threeViewer.scene.traverse(function(obj){
         if (obj.name == "flow" || obj.name == "skyFlow"){
           var oldMaterial = obj.children[0].material.clone();
@@ -177,7 +176,6 @@ async function init() {
       }
       else if (obj.name =="skyFlow"){
         obj.position.z = obj.initPosZ + value;
-        //obj.initPosZ = obj.initPosZ + value;
         obj.currentZ = obj.initPosZ + value;
       }
     });
@@ -277,7 +275,7 @@ async function init() {
           mesh.applyMatrix4(mat);
           meshPeak.applyMatrix4(mat);
 
-          meshPeak.position.y += obj.size/2;
+          meshPeak.position.y += (controller.tailleMesh*obj.size)/2;
 
           obj.children[0].geometry.dispose();
           obj.children[0].material.dispose();
