@@ -52,6 +52,9 @@ export class VTController {
     this.enableDifferentScale = paramsGUI.enableDifferentScale;
     this.typeMesh = paramsGUI.typeMesh;
     this.tailleMesh = paramsGUI.tailleMesh;
+    this.colorMax = paramsGUI.colorMax;
+    this.colorMin = paramsGUI.colorMin;
+    this.dureeVie = paramsGUI.dureeVie;
   }
 
   async init(center, zoom, renderMode, style, tileZoom) {
@@ -64,7 +67,7 @@ export class VTController {
       ZOOM_RES_L93[zoom]
     );
 
-    this.olViewer = await new OLViewer(
+    /*this.olViewer = await new OLViewer(
       this.width,
       this.height,
       center,
@@ -84,11 +87,7 @@ export class VTController {
       self.state.loading++;
     });
 
-    this.olViewer.layer.getSource().on("tileloadend", this.loadTileFeatures);
-    /*this.threeViewer.scene.traverse(function(obj){
-      console.log(obj);
-    });*/
-
+    this.olViewer.layer.getSource().on("tileloadend", this.loadTileFeatures);*/
 
     this.currentZoomLevel = 3
 
@@ -97,10 +96,10 @@ export class VTController {
       var zoom = this.threeViewer.controls.target.distanceTo(this.threeViewer.controls.object.position);
       
       var instantZoomLevel = this.currentZoomLevel;
-      if (zoom > 1000){
+      if (zoom > 1300){
         instantZoomLevel = 3;
       }
-      else if (zoom > 600){
+      else if (zoom > 300){
         instantZoomLevel = 2;
       }
       else{
@@ -136,27 +135,26 @@ export class VTController {
 
     //PLACING & ANIMATING FLOWS
     this.threeViewer.scene.traverse (function (flow){
-      if (flow.name == "flow" || flow.name == "skyFlow"){
+      if ((flow.name == "flow" || flow.name == "skyFlow") && flow.children.length > 0){
 
         var scale = flow.size
 
-        //CHANGE THIS FOR DISTANCE/LENGHT OF LIFE PARAM
-        var coef = 1;
-        
         var currentDistanceFromInit = Math.sqrt((flow.initPosX - flow.position.x)**2 + (flow.initPosY - flow.position.y)**2 + (flow.currentZ - flow.position.z)**2);
-        if (currentDistanceFromInit >= coef*scale){
+        if (currentDistanceFromInit >= this.dureeVie*scale){
 
           //les ajouts aléatoires sont très importants et jouent bcp sur le rendu (à supprime si mieux quand très fluide).
           //ils apportent un léger décalagage spatial pour donner plus de naturel, et du coup un décalage temporel (car la distance
           // à l'origine n'est plus toujours la même, ce qui évite l'effet "hypnotisant", "déjà vu", "répétitif")
           // mais cela brouille un peu aussi la donnée, c'est légèrement moins clair
 
-          if (this.typeFourchette == 0){
+          /*if (this.typeFourchette == 0){
             var refPosZ = flow.initPosZ;
           }
           else if (this.typeFourchette > 0){
             var refPosZ = flow.currentZ;
-          }
+          }*/
+
+          //var refPosZ = flow.currentZ;
 
           if (this.reposFlux == "Fixe"){
             flow.position.x = flow.initPosX;
@@ -166,7 +164,7 @@ export class VTController {
             flow.position.x = flow.initPosX + scale*Math.random()/2; 
             flow.position.y = flow.initPosY + scale*Math.random()/2;
           }
-          flow.position.z = refPosZ;
+          flow.position.z = flow.currentZ;
           currentDistanceFromInit = 0;
         }
 
@@ -184,12 +182,20 @@ export class VTController {
 
         //OPACITY HANDLING (OPACITY = FUNCTION OF POSITION... STRANGELY ENOUGH)
         
-        if (currentDistanceFromInit < coef*scale/2){ //phase ascendante d'opacité
-          flow.children[0].material.opacity = this.opaciteMax + (currentDistanceFromInit - coef*scale/2)/(coef*scale/2) + this.opaciteMin;
+        
+        if (currentDistanceFromInit < this.dureeVie*scale/2){ //phase ascendante d'opacité
+          flow.children.forEach(function(mesh){
 
+            mesh.material.opacity = this.opaciteMax + (currentDistanceFromInit - this.dureeVie*scale/2)/(this.dureeVie*scale/2) + this.opaciteMin;
+
+          }.bind(this));
         }
         else{ //phase descendante d'opacité
-          flow.children[0].material.opacity = this.opaciteMax - (currentDistanceFromInit - coef*scale/2)/(coef*scale/2) + this.opaciteMin;
+          flow.children.forEach(function(mesh){
+
+            mesh.material.opacity = this.opaciteMax - (currentDistanceFromInit - this.dureeVie*scale/2)/(this.dureeVie*scale/2) + this.opaciteMin;
+
+          }.bind(this));
         }
       }
     }.bind(this));
@@ -198,11 +204,8 @@ export class VTController {
       this.flowLine.moveAlongCurve(0.01);
     }
 
-
-
-
     this.threeViewer.animate();
-    requestAnimationFrame(function() {
+    this.requestId = requestAnimationFrame(function() {
       this.render();
     }.bind(this)); 
   }
@@ -276,7 +279,6 @@ export class VTController {
   }
 
   orientateMesh(mesh, speedX, speedY, speedZ, length){
-    mesh.applyMatrix4(new Matrix4().makeScale(1, length, 1));
     mesh.rotateOnWorldAxis(new THREE.Vector3(1,0,0), Math.atan(speedZ/length)); //rotation X (direction haut bas)
   
     //Rotation handling :
@@ -289,27 +291,67 @@ export class VTController {
       }
       else{
         //quart bas droit
-        mesh.material.color.set("red");
         mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), - Math.atan(speedX/speedY) - Math.PI);
       }
     }
     else{
       if (speedY >= 0){
         //quart haut gauche
-        mesh.material.color.set("green");
         mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.atan(speedY/speedX) + Math.PI/2);
       }
       else{
         //quart bas gauche
-        mesh.material.color.set("blue");
         mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.PI/2 + Math.atan(speedY/speedX));
       }
     }
   }
+
+  componentToHex(c) {
+    var hex = c.toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+  }
+  
+  rgbToHex(r, g, b) {
+    return "#" + this.componentToHex(r) + this.componentToHex(g) + this.componentToHex(b);
+  }
+
+  updateColor(){
+    this.threeViewer.scene.traverse(function(obj){
+      if (obj.name == "flow" || obj.name == "skyFlow"){
+        var relativeSize = obj.rg;
+        var nbRed = Math.floor(relativeSize*this.colorMax[0] + (1 - relativeSize)*this.colorMin[0]);
+        var nbGreen = Math.floor(relativeSize*this.colorMax[1] + (1 - relativeSize)*this.colorMin[1]);
+        var nbBlue = Math.floor(relativeSize*this.colorMax[2] + (1 - relativeSize)*this.colorMin[2]);
+        var pointColor = this.rgbToHex(nbRed, nbGreen, nbBlue);
+        obj.children.forEach(function(mesh){
+
+          mesh.material.color.set(pointColor);
+        }.bind(this)); 
+
+        //obj.children[0].material.color.set(pointColor);
+        
+      }
+    }.bind(this));
+  }
+
+  //code volé sur internet pour passer d'une couleur hexadécimale à son équivalente RGB
+  /*
+  convertToRGB(stringHex){
+    if(stringHex.length != 7){
+        throw "Only seven-digit hex colors are allowed.";
+    }
+
+    var col = stringHex.shift();
+    var aRgbHex = col.match(/.{1,2}/g); //expression régulière
+    var aRgb = [
+        parseInt(aRgbHex[0], 16),
+        parseInt(aRgbHex[1], 16),
+        parseInt(aRgbHex[2], 16)
+    ];
+    return aRgb;
+  }*/
   
   addObjects(zoomLevel, meshType) {
-
-    console.log(zoomLevel);
 
     var windData;
     if (zoomLevel == 3){
@@ -326,21 +368,40 @@ export class VTController {
       
       //Initial buffer geometries
   
-      var m = new THREE.MeshStandardMaterial({color : "black", opacity: 1, transparent: true});
+      var relativeSize = point.rg;
+      var nbRed = Math.floor(relativeSize*this.colorMax[0] + (1 - relativeSize)*this.colorMin[0]);
+      var nbGreen = Math.floor(relativeSize*this.colorMax[1] + (1 - relativeSize)*this.colorMin[1]);
+      var nbBlue = Math.floor(relativeSize*this.colorMax[2] + (1 - relativeSize)*this.colorMin[2]);
+      //console.log(nbRed, nbGreen, nbBlue);
+      var pointColor = this.rgbToHex(nbRed, nbGreen, nbBlue);
+      var m = new THREE.MeshStandardMaterial({color : pointColor, opacity: 1, transparent: true});
       var flowSize = Math.sqrt(point.u**2 + point.v**2 + point.w**2);
+      var flowWidthTop = 0.2*(2**zoomLevel);
   
       if (meshType == "Cylindre"){ //ATTENTION ! FAUT ADAPTER TOUTE CETTE FONCTION AUX CHANGEMENTS DE ZOOM, POUR QUE LES PARAMS DU MENU SOIENT PRIS EN COMPTE
-        var flowWidthTop = 0.2*(2**zoomLevel);
         var flowWidthBottom = 0.01;
         var p = new THREE.CylinderBufferGeometry(flowWidthTop, flowWidthBottom);
-        var mat = new Matrix4().makeScale(1, this.tailleMesh, 1);
+        var mat = new Matrix4().makeScale(1, this.tailleMesh*flowSize, 1);
         var mesh = new THREE.Mesh(p, m);
         mesh.applyMatrix4(mat);
-        this.orientateMesh(mesh, point.u, point.v, point.w, flowSize);
+        //this.orientateMesh(mesh, point.u, point.v, point.w, flowSize);
       }
       else if (meshType == "Sphere"){
         var p = new THREE.SphereBufferGeometry(this.tailleMesh);
         var mesh = new THREE.Mesh(p, m);
+      }
+      else if (meshType == "Flèche"){
+        var hilt = new THREE.CylinderBufferGeometry(flowWidthTop, flowWidthTop);
+        var peak = new THREE.ConeBufferGeometry(2*flowWidthTop, 0.5);
+        var mesh = new THREE.Mesh(hilt, m);
+        var meshPeak = new THREE.Mesh(peak,m);
+        var mat = new Matrix4().makeScale(1, this.tailleMesh*flowSize, 1);
+        mesh.applyMatrix4(mat);
+        meshPeak.applyMatrix4(mat);
+        meshPeak.position.y += (this.tailleMesh*flowSize)/2;
+        //this.orientateMesh(mesh, point.u, point.v, point.w, flowSize);
+        //this.orientateMesh(meshPeak, point.u, point.v, point.w, flowSize);
+
 
       }
 
@@ -354,6 +415,13 @@ export class VTController {
   
       var flow = new THREE.Group();
       flow.add(mesh);
+      //this.orientateMesh(flow, point.u, point.v, point.w, flowSize);
+
+      if (meshType == "Flèche"){
+        flow.add(meshPeak);
+      }
+
+      this.orientateMesh(flow, point.u, point.v, point.w, flowSize);
       if (point.z > 50){
         flow.name = "skyFlow";
       }
@@ -373,6 +441,7 @@ export class VTController {
       flow.speedZ = point.w;
       flow.size = flowSize;
       flow.currentScale = this.tailleMesh;
+      flow.rg = point.rg;
   
       this.threeViewer.scene.add(flow);
   
@@ -434,25 +503,27 @@ export class VTController {
   }
 
   //AJOUT NATHAN : PERMET D'ADAPTER LE NOMBRE DE FLUX VISIBLES SELON LE NIVEAU DE ZOOM
-  async changeFlowDensity(zoomLevel){
-    
-    this.threeViewer.scene.traverse(function(obj){
-      if (obj.name == "flow" || obj.name == "skyFlow"){
+  changeFlowDensity(zoomLevel){
 
-        if (obj.children.length > 0){
-          obj.children[0].geometry.dispose();
-          obj.children[0].material.dispose();
-          this.threeViewer.scene.remove(obj.children[0]);
-          obj.remove(obj.children[0]);
-          if (obj instanceof THREE.Group){
-            this.threeViewer.scene.remove(obj);
-          }
-        }
+    var stockData = [];
+    this.threeViewer.scene.traverse(function(obj){
+      if (obj.name != "flow" && obj.name != "skyFlow" && obj.name == "" && !(obj instanceof THREE.Scene) && !(obj instanceof THREE.Mesh)){
+        console.log(obj);
+        stockData.push(obj);
       }
-    }.bind(this));
+    });
     
     this.threeViewer.scene.clear();
+
+    stockData.forEach(function(obj){
+      this.threeViewer.scene.add(obj);
+    }.bind(this));
+
+    stockData = [];
+
+    //console.log(this.threeViewer.scene.children.length);
     this.addObjects(zoomLevel, this.typeMesh);
+    //console.log(this.threeViewer.scene.children.length)
 
   }
 }

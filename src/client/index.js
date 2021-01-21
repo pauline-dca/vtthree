@@ -29,8 +29,8 @@ let withFlowLine = false;
 const paramsWind = {
   center: vavinCenter,
   zoom: 18,
-  layers: ["bati_surf", "bati_zai"],
-  //layers : [],
+  //layers: ["bati_surf", "bati_zai"],
+  layers : [],
   style: muetStyle,
   tileZoom: false
 };
@@ -41,10 +41,9 @@ let controller = null;
 async function init() {
 
   var paramsGUI = {tailleMesh : 1,
-    couleurMesh : "#000000",
     hauteurMesh : 15,
     typeFourchette : 0,
-    typeMesh : "Cylindre",
+    typeMesh : "Flèche",
     geomFlux : "mesh",
     nbFlux : 10,
     speedFlux : 0.01,
@@ -53,7 +52,10 @@ async function init() {
     newPosFlux : "Fixe",
     contFlux : null,
     flowLine : false,
-    enableDifferentScale : "Fixe"
+    enableDifferentScale : "Fixe",
+    colorMax : [160, 0, 0],
+    colorMin : [0, 160, 0],
+    dureeVie : 1
   }
 
   controller = new VTController(
@@ -74,6 +76,10 @@ async function init() {
 
   //gui.remember(paramsGUI);
 
+  var changeDureeVie = menuMesh.add(paramsGUI, "dureeVie", 1, 100, 0.05).name("Parcours Flux").listen();
+  changeDureeVie.onChange(function(value){
+    controller.dureeVie = value;
+  });
 
   var changeTaille = menuMesh.add(paramsGUI, "tailleMesh", 0.5, 5, 0.1).name("Taille").listen();
   changeTaille.onChange(function(value){ //FAIRE POUR QUE ÇA NE RECHARGE PAS SI C'ÉTAIT DÉJÀ ÇA
@@ -84,11 +90,11 @@ async function init() {
           var mat = new Matrix4().makeScale(1, value/obj.currentScale, 1);
           obj.currentScale = value;
           var quaternion = new THREE.Quaternion();
-          obj.children[0].getWorldQuaternion(quaternion);
-          obj.children[0].rotation.set(0,0,0);
+          obj.getWorldQuaternion(quaternion);
+          obj.rotation.set(0,0,0);
           obj.children[0].applyMatrix4(mat);
-          obj.currentScale = value;
-          obj.children[0].applyQuaternion(quaternion);
+          //obj.currentScale = value;
+          obj.applyQuaternion(quaternion);
         }
       });
     }
@@ -104,6 +110,23 @@ async function init() {
           controller.threeViewer.scene.remove(obj.children[0]);
           obj.remove(obj.children[0]);
           obj.add(meshSphere);
+        }
+      });
+    }
+    else if (paramsGUI.typeMesh == "Flèche"){
+      controller.threeViewer.scene.traverse(function(obj){
+        if (obj.name == "flow" || obj.name == "skyFlow"){ 
+          var mat = new Matrix4().makeScale(1, value/obj.currentScale, 1);
+          obj.currentScale = value;
+          var quaternion = new THREE.Quaternion();
+          obj.getWorldQuaternion(quaternion);
+          obj.rotation.set(0,0,0);
+          obj.currentScale = value;
+          obj.applyQuaternion(quaternion);
+
+          obj.children.forEach(function(mesh){
+            mesh.applyMatrix4(mat);
+          });
         }
       });
     }
@@ -132,14 +155,16 @@ async function init() {
     controller.baseSpeed = value;
   });
 
-  var changeCouleur = menuMesh.addColor(paramsGUI, "couleurMesh").name("Couleur").listen();
-  changeCouleur.onChange(function(value){
-    console.log(paramsGUI.speedFlux);
-    controller.threeViewer.scene.traverse(function(obj){
-      if (obj.name == "flow" || obj.name == "skyFlow"){
-        obj.children[0].material.color.set(value);
-      }
-    });
+  var changeCouleurMax = menuMesh.addColor(paramsGUI, "colorMax").name("Couleur Max").listen();
+  changeCouleurMax.onChange(function(value){
+    controller.colorMax = value;
+    controller.updateColor();
+  });
+
+  var changeCouleurMin = menuMesh.addColor(paramsGUI, "colorMin").name("Couleur Min").listen();
+  changeCouleurMin.onChange(function(value){
+    controller.colorMin = value;
+    controller.updateColor();
   });
 
   var changeHauteur = menuMesh.add(paramsGUI, "hauteurMesh", 0, 50, 0.5).name("Hauteur").listen();
@@ -148,10 +173,12 @@ async function init() {
       if (obj.name == "flow"){
         obj.position.z = value;
         obj.initPosZ = value;
+        obj.currentZ = value;
       }
       else if (obj.name =="skyFlow"){
-        obj.position.z = 45 + value;
-        obj.initPosZ = 45 + value;
+        obj.position.z = obj.initPosZ + value;
+        //obj.initPosZ = obj.initPosZ + value;
+        obj.currentZ = obj.initPosZ + value;
       }
     });
   });
@@ -182,22 +209,31 @@ async function init() {
     controller.reposFlux = value; //ATTENTION, LE RANDOM JOUE SUIVANT LA TAILLE DU FLUX (flow.size), MAIS CELLE CI N'EST PAS MISE À JOUR LORSQUE LA VARIABLE TAILLE EST CHANGÉE DANS LE MENU
   });
 
-  var changeGeometry = menuMesh.add(paramsGUI, "typeMesh", ["Cylindre", "Sphere", "Particule"]).name("Forme").listen();
+  var changeGeometry = menuMesh.add(paramsGUI, "typeMesh", ["Cylindre", "Sphere", "Flèche", /*, "Particule"*/]).name("Forme").listen();
   changeGeometry.onChange(function(value){
-    // possible values are for the time being : cylinder, sphere (Particle to come)
-    controller.typeMesh = value;
-    if (value == "Particule"){
+    
+    /*if (value == "Particule"){
       var particles = new THREE.Geometry();
       var pMaterial = new THREE.PointsMaterial({
         color: "#000000",
         size : 5,
         transparent : true,
-        blending: THREE.AdditiveBlending
+        blending: THREE.SubtractiveBlending
       });
-    }
+    }*/
     
     controller.threeViewer.scene.traverse(function(obj){
+
       if (obj.name == "flow" || obj.name == "skyFlow"){
+        
+        if (obj.children.length > 1){ //il faut supprimer le cône définitivement si c'est une flèche
+
+        obj.children[1].geometry.dispose();
+        obj.children[1].material.dispose();
+        controller.threeViewer.scene.remove(obj.children[1]);
+        obj.remove(obj.children[1]);
+        }
+
         if (value == "Sphere"){
           var p = new THREE.SphereBufferGeometry(controller.tailleMesh);
           var m = obj.children[0].material.clone();
@@ -211,7 +247,7 @@ async function init() {
         }
         else if (value == "Cylindre"){
           var p = new THREE.CylinderBufferGeometry(0.2*(2**controller.currentZoomLevel), 0.01);
-          var mat = new Matrix4().makeScale(1, controller.tailleMesh, 1);
+          var mat = new Matrix4().makeScale(1, controller.tailleMesh*obj.size, 1);
           var m = obj.children[0].material.clone();
           var mesh = new THREE.Mesh(p, m);
           mesh.applyMatrix4(mat);
@@ -219,174 +255,57 @@ async function init() {
           obj.children[0].material.dispose();
           controller.threeViewer.scene.remove(obj.children[0]);
           obj.remove(obj.children[0]);
-          controller.orientateMesh(mesh, obj.speedX, obj.speedY, obj.speedZ, obj.size);
+          //controller.orientateMesh(obj, obj.speedX, obj.speedY, obj.speedZ, obj.size);
           obj.add(mesh);
         }
-        else if (value == "Particule"){
+        /*else if (value == "Particule"){
           obj.children[0].geometry.dispose();
           obj.children[0].material.dispose();
           controller.threeViewer.scene.remove(obj.children[0]);
           obj.remove(obj.children[0]);
           var particle = new THREE.Vector3(obj.initPosX, obj.initPosY, obj.initPosZ);
           particles.vertices.push(particle);
+        }*/
+        else if (value == "Flèche"){
+
+          var width = 0.2*(2**controller.currentZoomLevel);
+          var p = new THREE.CylinderBufferGeometry(width, width);
+          var mat = new Matrix4().makeScale(1, controller.tailleMesh*obj.size, 1);
+          var m = obj.children[0].material.clone();
+          var mesh = new THREE.Mesh(p, m);
+          var meshPeak = new THREE.Mesh(new THREE.ConeBufferGeometry(2*width, 0.5), m);
+          mesh.applyMatrix4(mat);
+          meshPeak.applyMatrix4(mat);
+
+          meshPeak.position.y += obj.size/2;
+
+          obj.children[0].geometry.dispose();
+          obj.children[0].material.dispose();
+          controller.threeViewer.scene.remove(obj.children[0]);
+          obj.remove(obj.children[0]);
+
+          obj.add(mesh);
+          obj.add(meshPeak);
+
+          //controller.orientateMesh(obj, obj.speedX, obj.speedY, obj.speedZ, obj.size);
+          
+
         }
       }
     });
 
-    if (value == "Particule"){
+    controller.typeMesh = value;
+
+    /*if (value == "Particule"){
       var particleSystem = new THREE.Points(particles, pMaterial);
-      obj.add(particleSystem);
-      //controller.threeViewer.scene.add(particleSystem);
-    }
+      //obj.add(particleSystem);
+      controller.threeViewer.scene.add(particleSystem);
+    }*/
 
   });
 
-  var flowLine = controller.addObjects(3, "Cylindre"); //3 for the initial zoomLevel  , Cylindre as initial mesh
+  var flowLine = controller.addObjects(3, paramsGUI.typeMesh); //3 for the initial zoomLevel  , Cylindre as initial mesh
   controller.flowLine = flowLine;
 }
-
-
-function orientateMesh(mesh, speedX, speedY, speedZ, length){
-  mesh.applyMatrix4(new Matrix4().makeScale(1, length, 1));
-  mesh.rotateOnWorldAxis(new THREE.Vector3(1,0,0), Math.atan(speedZ/length)); //rotation X (direction haut bas)
-
-  //Rotation handling :
-  
-  if (speedX >= 0){ //vitesse en longitude, selon les x
-    if (speedY >= 0){ //vitesse en latitude, selon les y
-      //quart haut droit du cercle trigo, si l'on place les x au nord, car l'orientation de base des meshs est dirigée vers les y
-      mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), - Math.atan(speedX/speedY)); //rotation selon Z (direction lat lon)
-    }
-    else{
-      //quart bas droit
-      mesh.material.color.set("red");
-      mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), - Math.atan(speedX/speedY) - Math.PI);
-    }
-  }
-  else{
-    if (speedY >= 0){
-      //quart haut gauche
-      mesh.material.color.set("green");
-      mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.atan(speedY/speedX) + Math.PI/2);
-    }
-    else{
-      //quart bas gauche
-      mesh.material.color.set("blue");
-      mesh.rotateOnWorldAxis(new THREE.Vector3(0,0,1), Math.PI/2 + Math.atan(speedY/speedX));
-    }
-  }
-}
-/*
-function addObjects() {
-  
-  windData.forEach(function(point){
-    
-    //Initial buffer geometries
-
-    var flowWidthTop = 0.2;
-    var flowWidthBottom = 0.01;
-
-    var p = new THREE.CylinderBufferGeometry(flowWidthTop, flowWidthBottom);
-
-    // Some main parameters for the flows, to be modified depending on the context...
-    var coef = 3;
-    var flowSize = coef*Math.sqrt(point.u**2 + point.v**2 + point.w**2);
-    var m = new THREE.MeshStandardMaterial({color : "black", opacity: 1, transparent: true});
-    var mesh = new THREE.Mesh(p, m);
-    orientateMesh(mesh, point.u, point.v, point.w, flowSize);
-
-    //Postionning the objects
-    var cooWebMerca = proj4(proj4326, proj3857, [point.lon, point.lat]);
-    var goodCoords = controller.threeViewer.getWorldCoords(cooWebMerca);
-
-    var flow = new THREE.Group();
-    flow.add(mesh);
-    if (point.z > 50){
-      flow.name = "skyFlow";
-    }
-    else{
-      flow.name = "flow";
-    }
-
-    flow.initPosX = goodCoords[0];
-    flow.initPosY = goodCoords[1];
-    flow.initPosZ = point.z;
-    flow.currentZ = point.z;
-    flow.position.x = goodCoords[0];
-    flow.position.y = goodCoords[1];
-    flow.position.z = point.z
-    flow.speedX = point.u;
-    flow.speedY = point.v;
-    flow.speedZ = point.w;
-    flow.size = flowSize;
-    flow.currentScale = 1;
-
-    controller.threeViewer.scene.add(flow);
-/*
-    var quaternion = new THREE.Quaternion();
-    mesh.getWorldQuaternion(quaternion);
-    var euler_rot = new THREE.Euler().setFromQuaternion(quaternion);
-    console.log(euler_rot);*/
-    //console.log(mesh.scale);
-
-    
-
-
-  //}); 
-
-  //TESTS WITH CURVES
-  /*
-
-  const curveHandles = [];
-
-  var lstCurve = [
-    { x: 50, y: -800, z: 120 },
-    { x: 0, y: 0, z: 120 },
-    { x: -200, y: 200, z: 120 },
-  ];
-
-  
-
-  const boxGeometry = new THREE.BoxBufferGeometry( 0.1, 0.1, 0.1 );
-  const boxMaterial = new THREE.MeshBasicMaterial();
-
-  for ( const handlePos of lstCurve ) {
-
-    const handle = new THREE.Mesh( boxGeometry, boxMaterial );
-    handle.position.copy( handlePos );
-    curveHandles.push( handle );
-    controller.threeViewer.scene.add( handle );
-
-  }
-  const curve = new THREE.CatmullRomCurve3(curveHandles.map((handle) => handle.position));
-  curve.curveType = "centripetal";
-  //curve.closed = true;
-
-  const points = curve.getPoints( 50 );
-  const line = new THREE.LineLoop(
-    new THREE.BufferGeometry().setFromPoints( points ),
-    new THREE.LineBasicMaterial({color: "black"})
-  );
-
-  controller.threeViewer.scene.add( line );
-
-  //geometry to be placed along the curve
-  var rect = new THREE.SphereBufferGeometry(5,8,6);
-
-  //rect.rotateY(-Math.PI/2);
-
-  const objectToCurve = new THREE.Mesh(rect, new THREE.MeshStandardMaterial({color: 0x99ffff}));
-  objectToCurve.name = "toBeMoved";
-  const flowLine = new Flow(objectToCurve);
-
-  flowLine.updateCurve(0, curve);
-  flowLine.name = "curve";
-  controller.threeViewer.scene.add(flowLine.object3D);
-
-  return flowLine;
-  */
-
-  //return null;
-//}
 
 init();

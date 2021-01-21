@@ -326,7 +326,7 @@ export class VTThreeViewer {
     this.scene.children.forEach(function(elem){
 
       //console.log(elem);
-      if (elem.name == "flow"){
+      if (elem.name == "flow" || elem.name == "skyFlow"){
         var gap = this.dist(elem.initPosX, elem.initPosY, elem.initPosZ, xLocal, yLocal, zLocal);
         /* debug objects
         var newObj2 = new THREE.Mesh(new BoxBufferGeometry(5, 5, 5), new MeshStandardMaterial());
@@ -357,6 +357,8 @@ export class VTThreeViewer {
         }
       }
     }.bind(this));
+
+    console.log(lstFrame);
 
     lstFrame[0].elem.children[0].material.color.set("red");
     lstFrame[1].elem.children[0].material.color.set("red");
