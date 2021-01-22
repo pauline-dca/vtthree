@@ -120,7 +120,7 @@ for (var j = 1; j < nbScale + 1; j++){
           var Z = Math.max(finalZ, finalZ + 200*Math.log(Math.abs(dirU)/(Math.abs(dirV) + Math.log((Math.abs(dirU)/(Math.abs(dirV)))))));
         }
         else{
-          var Z = Math.max(finalZ, finalZ + 50*Math.log(Math.abs(dirU)/(Math.abs(dirV) + Math.log((Math.abs(dirU)/(Math.abs(dirV)))))));
+          var Z = Math.max(finalZ, finalZ + 30*Math.log(Math.abs(dirU)/(Math.abs(dirV) + Math.log((Math.abs(dirU)/(Math.abs(dirV)))))));
         }
         if (Math.abs(dirV) < 1 || Z == finalZ){
           var dirW = 0

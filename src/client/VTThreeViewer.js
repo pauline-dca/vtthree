@@ -155,8 +155,8 @@ export class VTThreeViewer {
     this.mapCenter = mapCenter;
     this.zoomFactor = zoomFactor;
     let material = new THREE.MeshStandardMaterial({
-      //color: 0xf1ecdb,
-      color : "#4d4c4c",
+      color: 0xf1ecdb,
+      //color : "#4d4c4c",
       flatShading: true,
       side: THREE.DoubleSide
     });
