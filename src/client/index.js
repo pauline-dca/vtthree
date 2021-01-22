@@ -5,7 +5,7 @@ import { VTController } from "./VTController";
 import { mergedRender, singleRender } from "./VTThreeViewer";
 import { planStyle, grisStyle, muetStyle } from "./OLViewer";
 import proj4 from "proj4";
-import { proj4326, proj3857 } from "./Utils";
+import { proj4326, proj3857, proj2154 } from "./Utils";
 
 //data can be imported like this or read from the data folder
 import * as geotiff from "geotiff";
@@ -13,22 +13,10 @@ import * as geotiff from "geotiff";
 const width = window.innerWidth; // this makes the 3D canvas full screen
 const height = window.innerHeight; // this makes the 3D canvas full screen
 
-// let parisLatLon = [48.8534, 2.3488];
-// let parisCenter = proj4(proj4326, proj3857, [parisLatLon[1], parisLatLon[0]]);
-//
-// let vavinLatLon = [48.8425824, 2.3275981];
-// let vavinCenter = proj4(proj4326, proj3857, [vavinLatLon[1], vavinLatLon[0]]);
+// Transform into Web Mercator coordinates
+let coordsAles = [4.08, 44.13]
+let alesCenter = proj4(proj4326, proj3857, [coordsAles[0], coordsAles[1]]);
 
-let coordsAles = [44.184, 4.048];
-let alesCenter = proj4(proj4326, proj3857, [coordsAles[1], coordsAles[0]]);
-
-// const paramsCovid = {
-//   center: parisCenter,
-//   zoom: 12,
-//   layers: [],
-//   style: planStyle
-// };
-//
 // const paramsWind = {
 //   center: vavinCenter,
 //   zoom: 18,
@@ -36,33 +24,41 @@ let alesCenter = proj4(proj4326, proj3857, [coordsAles[1], coordsAles[0]]);
 //   style: muetStyle
 // };
 
-const params = {
+const paramsFlood = {
   center: alesCenter,
-  zoom: 12,
+  zoom: 14,
   layers: [],
-  style: grisStyle
+  style: planStyle
 };
 
-// let params = paramsFlood;
+let params = paramsFlood;
 let controller = null;
-async function init() {
-  // to read tiff file: https://geotiffjs.github.io/geotiff.js/. other files to be read should be added to the data folder
-  let tiffData = await geotiff.fromUrl("ombreMNT.tif");
 
-  const image = await tiffData.getImage();
-  const widthI = image.getWidth();
-  const heightI = image.getHeight();
-  console.log(widthI, heightI);
-  const [data] = await image.readRasters();
+async function init() {
+  // to read tiff file: https://geotiffjs.github.io/geotiff.js/
+  // other files to be read should be added to the data folder
+
+  // l'image s'affiche sur la carte au niveau des Prés-Saint-Jean
+  let tiffHauteurs = await geotiff.fromUrl("decoupe_hauteurs_max.tif");
+
+
+  const imageHauteurs = await tiffHauteurs.getImage();
+
+  const widthImg = imageHauteurs.getWidth();
+  const heightImg = imageHauteurs.getHeight();
+  console.log(widthImg, heightImg);
+
+  const [data] = await imageHauteurs.readRasters();
+
   const texture = new THREE.DataTexture(
     data,
-    widthI,
-    heightI,
+    widthImg,
+    heightImg,
     THREE.LuminanceFormat,
-    THREE.UnsignedByteType
+    // THREE.UnsignedByteType
+    THREE.FloatType
   );
   texture.needsUpdate = true;
-  // let tiffMNT = await geotiff.fromUrl("ombreMNT.tif");
 
   controller = new VTController(
     width,
@@ -79,23 +75,29 @@ async function init() {
 
 function addObjects(texture) {
   //example to add an object to the scene
-  // let worldCoords = controller.threeViewer.getWorldCoords(alesCenter); // the getWorldCoords function transform webmercator coordinates into three js world coordinates
+  // let worldCoords = controller.threeViewer.getWorldCoords(alesCenter);
   // var geometry = new THREE.BoxBufferGeometry(100, 100, 100);
-  //var material = new THREE.MeshStandardMaterial({ color: 0xff4500 });
-  // var cube = new THREE.Mesh(geometry, material); //a three js mesh needs a geometry and a material
+  //var material = new THREE.MeshStandardMaterial({  });
+  // var cube = new THREE.Mesh(geometry, material);
   // cube.position.x = worldCoords[0];
   // cube.position.y = worldCoords[1];
   // cube.position.z = 0;
-  // controller.threeViewer.scene.add(cube); //all objects have to be added to the threejs scene
-  let worldCoords = controller.threeViewer.getWorldCoords(alesCenter);
-  const geometry = new THREE.PlaneBufferGeometry(100, 100, 32);
+  // controller.threeViewer.scene.add(cube);
 
+
+  // the getWorldCoords function transform webmercator coordinates into three js world coordinates
+  let worldCoords = controller.threeViewer.getWorldCoords(alesCenter);
+
+  //a three js mesh needs a geometry and a material
+  const geometry = new THREE.PlaneBufferGeometry(17, 12, 32);
   var material = new THREE.MeshBasicMaterial({ map: texture });
+
   var cube = new THREE.Mesh(geometry, material);
+
   cube.position.x = worldCoords[0];
   cube.position.y = worldCoords[1];
   cube.position.z = 0;
-  controller.threeViewer.scene.add(cube);
+  controller.threeViewer.scene.add(cube); //all objects have to be added to the threejs scene`
 }
 
 init();
