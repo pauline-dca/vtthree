@@ -39,7 +39,6 @@ export class OLViewer {
 
     this.map = new Map({
       layers: [],
-      //target: "map",
       target: "map",
       view: new View({
         center: center,

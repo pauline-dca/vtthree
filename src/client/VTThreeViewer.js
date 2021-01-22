@@ -1,3 +1,6 @@
+// ---------------------------------------------------------------------------------------------------- //
+
+// --- IMPORTS --- //
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { ZOOM_RES_L93 } from "./Utils";
@@ -7,7 +10,12 @@ import { BoxBufferGeometry, MeshStandardMaterial } from "three";
 export const mergedRender = "Merged";
 export const singleRender = "Single";
 
+// ---------------------------------------------------------------------------------------------------- //
+
 export class VTThreeViewer {
+
+  //This class has not been changed a lot (only function doubleClick at the end of file)
+
   constructor(
     width,
     height,
@@ -28,7 +36,6 @@ export class VTThreeViewer {
     this.doubleClick = this.doubleClick.bind(this);
     this.initThree(backgroundColor);
     this.addHemisphereLights2();
-    //this.controls = null; //ajout nathan, pour donner l'accès à l'OrbitControl par la suite, dans VTController
   }
 
   initThree(backgroundColor) {
@@ -148,7 +155,8 @@ export class VTThreeViewer {
     this.mapCenter = mapCenter;
     this.zoomFactor = zoomFactor;
     let material = new THREE.MeshStandardMaterial({
-      color: 0xf1ecdb,
+      //color: 0xf1ecdb,
+      color : "#4d4c4c",
       flatShading: true,
       side: THREE.DoubleSide
     });
@@ -294,6 +302,10 @@ export class VTThreeViewer {
   }
 
   doubleClick(event) {
+
+    // The double click now triggers a print in the console, showing an interpolated speed at the coordinates of the click.
+    // This is not perfectly working, there are a few mistakes sometimes, especially because of the Z coordinate.
+    
     let x = (event.clientX / window.innerWidth) * 2 - 1;
     let y = -(event.clientY / window.innerHeight) * 2 + 1;
     let self = this;
@@ -302,50 +314,31 @@ export class VTThreeViewer {
 
     var xShow = intersects[0].point.x * this.zoomFactor + this.mapCenter[0]
     var yShow = intersects[0].point.y * this.zoomFactor + this.mapCenter[1]
-    console.log(xShow, yShow);
+    console.log(xShow, yShow); //Coordinates in lon, lat
 
-    //AJOUT NATHAN : INTERPOLATION À LA VOLÉE POUR DONNER UNE VALEUR PRÉCISE DE VITESSE DE VENT EN TOUT POINT DE L'ESPACE
+    // Coordinates in the scene
     var xLocal = intersects[0].point.x;
     var yLocal = intersects[0].point.y;
     var zLocal = intersects[0].point.z;
 
-    /* debug objects
-    var newObj = new THREE.Mesh(new BoxBufferGeometry(20, 20, 20), new MeshStandardMaterial());
-    newObj.position.x = xLocal;
-    newObj.position.y = yLocal;
-    this.scene.add(newObj);*/
-
-    /*for ( let i = 0; i < intersects.length; i ++ ) {
-
-      intersects[ i ].object.material.color.set( 0xff0000 );
-  
-    }*/
-
     var lstFrame = [];
 
+    //LOOP SELECTING THE 4 FLOWS FRAMING THE DOUBLE CLICK
     this.scene.children.forEach(function(elem){
 
-      //console.log(elem);
       if (elem.name == "flow" || elem.name == "skyFlow"){
         var gap = this.dist(elem.initPosX, elem.initPosY, elem.initPosZ, xLocal, yLocal, zLocal);
-        /* debug objects
-        var newObj2 = new THREE.Mesh(new BoxBufferGeometry(5, 5, 5), new MeshStandardMaterial());
-        newObj2.position.x = elem.initPosX;
-        newObj2.position.y = elem.initPosY;
-        this.scene.add(newObj2);
-        */
-        if (lstFrame.length < 4){
+
+        if (lstFrame.length < 4){ //first four flows to build the array of selection
           var point = {distance : gap, speedX: elem.speedX, speedY: elem.speedY, speedZ: elem.speedZ, elem: elem};
           lstFrame.push(point);
           lstFrame.sort(function(point1, point2){ //sort DESCENDINGLY the array according to the distance item of the objects within
             return point1.distance > point2.distance ? -1 : 1 //put highest distances at the beginning
           });
         }
-        else{
+        else{ // all the other flows to be compared with the first four
           for (var i = 0; i < 4; i++){
             if (lstFrame[i].distance > gap){ //we found a closer point
-              //console.log(i, lstFrame[0].distance, lstFrame[1].distance, lstFrame[2].distance, lstFrame[3].distance, gap);
-              //newObj2.material.color.set("green");
               lstFrame[i] = {distance: gap, speedX: elem.speedX, speedY: elem.speedY, speedZ: elem.speedZ, elem : elem}; //replacing the furthest point
               lstFrame.sort(function(point1, point2){ //sorting again the array, each time a closer point is found
                 return point1.distance > point2.distance ? -1 : 1;
@@ -358,8 +351,7 @@ export class VTThreeViewer {
       }
     }.bind(this));
 
-    console.log(lstFrame);
-
+    /* allows to visualise the 4 selected flows */
     lstFrame[0].elem.children[0].material.color.set("red");
     lstFrame[1].elem.children[0].material.color.set("red");
     lstFrame[2].elem.children[0].material.color.set("red");
@@ -386,8 +378,6 @@ export class VTThreeViewer {
     console.log("Vitesse ponctuelle en X (lon) : ", clickSpeedX,
     "Vitesse ponctuelle en Y (lat) : ",clickSpeedY,
     "Vitesse ponctuelle en Z (h) : ",clickSpeedZ);
-
-
 
   }
 }
