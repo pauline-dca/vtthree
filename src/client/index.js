@@ -22,7 +22,7 @@ import { Vector3 } from "three";
 
 const width = window.innerWidth; // this makes the 3D canvas full screen
 const height = window.innerHeight; // this makes the 3D canvas full screen
-const zSize = 300; //Represent the size on the 3D modelisation. The value 300 is arbitrary
+const zSize = 300; //Represent the vertical size on the 3D modelisation. Arbitrary value
 const nbrDaysMax = 100; //Number of days from the first entry that can be displayed
 
 let raycaster, renderer;
@@ -46,7 +46,7 @@ var temposcale = new TempoScale(0, nbrDaysMax);
 let params = paramsCovid;
 let controller = null;
 async function init() {
-  //create element for raycasting
+  //create elements for raycasting
   let container = document.createElement("div");
   document.body.appendChild(container);
   raycaster = new THREE.Raycaster();
@@ -73,11 +73,11 @@ async function init() {
   const covidCaseGroup = new THREE.Group();
   covidCaseGroup.name = "covidCaseGroup";
   addObjects(covidCaseGroup);
-
+  
   //Adding the covid cases aggregated on a hexgrid
-  var hexRadius = 25; //Resolution of the hexgrid
+  var hexRadius = 25; //Spatial resolution of the hexgrid
   var nbrDaysAgregation = 1; //Temporal resolution
-  var coeffRadius = 4; //Coefficient to adapt the size of 3D object
+  var coeffRadius = 4; //Arbitrary coefficient influencing on the cylinder radius
   const hexCovidCaseGroup2 = new THREE.Group();
   hexCovidCaseGroup2.name = "hexCovidCaseGroup2";
   hexAgregation(hexCovidCaseGroup2, hexRadius, nbrDaysAgregation, coeffRadius);
@@ -121,7 +121,7 @@ function altiToDate(z) {
   return new Date((days + firstDate) * 86400000).toISOString().slice(0, 10);
 }
 
-// Restruturing the data with a row by date
+// Restructuring the data with a row by date
 function dataByDate() {
   var covidDataDate = new Array();
   for (let elt in covidData) {
@@ -137,7 +137,7 @@ function dataByDate() {
     let worldCoords = controller.threeViewer.getWorldCoords(tokenCenter);
     data["x"] = worldCoords[0];
     data["y"] = worldCoords[1];
-    data["datapoint"] = 1;
+    data["datapoint"] = 1; //value used by the algorithm making the hexogrid
     data["name"] = covidData[elt]["date"];
     if (typeof covidDataDate[covidData[elt]["date"]] == "undefined") {
       covidDataDate[covidData[elt]["date"]] = [data];
@@ -153,7 +153,6 @@ function dataByDate() {
 // Adding the covid cases with one cube by entry
 function addObjects(covidCaseGroup) {
   for (let covidCase in covidData) {
-    //example to add an object to the scene
     let tokenLatLon = [
       parseFloat(covidData[covidCase]["lat"]),
       parseFloat(covidData[covidCase]["lon"])
@@ -170,7 +169,7 @@ function addObjects(covidCaseGroup) {
     cube.position.y = worldCoords[1];
     cube.position.z = dateToAlti(covidData[covidCase]["date"]);
     cube.name = covidData[covidCase]["date"];
-    if (cube.position.z >= 0 && cube.position.z <= zSize) {
+    if (cube.position.z >= 0 && cube.position.z <= zSize) { //We shox only the entries that are in the temporal boudaries
       cube.visible = true;
     } else {
       cube.visible = false;
@@ -185,7 +184,7 @@ function addTempoScaleLabel(scaleGroup) {
   const loader = new THREE.FontLoader();
   var font = loader.parse(helvetiker);
 
-  var nbrLegends = 6; // Nbr of texts displayed to form the temporal legend
+  var nbrLegends = 6; // Nbr of texts forming the temporal legend
   for (let i = 0; i <= nbrLegends; i++) {
     let date = altiToDate((i * zSize) / nbrLegends);
     const axegeometry = new THREE.TextGeometry(date + "__", {
@@ -203,7 +202,7 @@ function addTempoScaleLabel(scaleGroup) {
     var axematerial = new THREE.MeshStandardMaterial({ color: 0x000000 });
     var axe = new THREE.Mesh(axegeometry, axematerial); //a three js mesh needs a geometry and a material
     axe.position.x = -350;
-    axe.position.y = 0;
+    axe.position.y = -70;
     axe.position.z = (i * zSize) / nbrLegends + 3;
     scaleGroup.add(axe); //all objects have to be added to the threejs scene
   }
@@ -215,9 +214,8 @@ function addClusters(clustersGroup) {
   let vectorArray;
   let pointsCloud;
   for (let clusters in clusterCovidData) {
-    vectorArray = [];
+    vectorArray = []; //Will contain the points forming the cluster
     pointsCloud = clusterCovidData[clusters]["cluster"];
-    //pointsCloud = clusterCovidData[0]["cluster"];
     for (let clusterPoint in pointsCloud) {
       //Creation of the point cloud
       let tokenLatLon = [
@@ -233,8 +231,7 @@ function addClusters(clustersGroup) {
         new Vector3(
           worldCoords[0],
           worldCoords[1],
-          (pointsCloud[clusterPoint][2] - temposcale.min) *
-            (zSize / (temposcale.max - temposcale.min))
+          (pointsCloud[clusterPoint][2] - temposcale.min) * (zSize / (temposcale.max - temposcale.min))
         )
       );
     }
@@ -259,7 +256,7 @@ function hexAgregation(
   coeffRadius = 2
 ) {
   var hexbin, colorScale, maxDatapoints;
-
+  //Setting the position of the centers of the hexogrid
   function getPointGrid(radius) {
     var hexDistance = radius * 1.5;
     var cols = width / hexDistance;
@@ -333,7 +330,6 @@ function hexAgregation(
       "#2FDC5A",
       "#27C36F"
     ];
-    let boudaries = [0, 3, 10, 25, 50, 75];
     for (let i = 0; i < boudaries.length - 1; i++) {
       if (nbrCovid >= boudaries[i] && nbrCovid < boudaries[i + 1]) {
         return grad[i];
@@ -342,11 +338,40 @@ function hexAgregation(
     return grad[boudaries.length - 1];
   }
 
+  //Boudaries of the color gradien, each zoom level have its own boudaries
+  let boudaries;
+  function setBoudaries(hexData){
+    let maxBoudaries = 0;
+    for (let hexDataDate in hexData) {
+      for (let hexCovidCase in hexData[hexDataDate]) {
+        let firstDate = Number(new Date(covidData[0]["date"])) / 86400000; //day of the firt entry
+        let actualDate = Number(new Date(hexDataDate)) / 86400000;
+        let date = Number(new Date(actualDate - firstDate)) / 86400000; //number of days since the first entry
+        if (
+          (date * 86400000) % nbrDaysAgregation < 0.001 &&
+          (date * 86400000) % nbrDaysAgregation > -0.001
+        )
+          var nbrCovid = temporalAggregation(
+            hexCovidCase,
+            hexData,
+            hexDataDate
+          );
+        if (nbrCovid != 0 && nbrCovid > maxBoudaries) {
+          maxBoudaries = nbrCovid 
+        }
+      }
+    }
+    //Discretization of equal amplitude
+    boudaries = [1, Math.floor(maxBoudaries*1/6), Math.floor(maxBoudaries*2/6), Math.floor(maxBoudaries*3/6), Math.floor(maxBoudaries*4/6), Math.floor(maxBoudaries*5/6)];
+  };
+
+
   // Adding the covid cases aggregated on a hexgrid
   function addHexCovidCases(hexCovidCaseGroup) {
     var databyDate = dataByDate();
     var pointGrid = getPointGrid(hexRadius);
     var hexData = hexDatabyDate(databyDate, pointGrid);
+    setBoudaries(hexData);
     for (let hexDataDate in hexData) {
       for (let hexCovidCase in hexData[hexDataDate]) {
         let firstDate = Number(new Date(covidData[0]["date"])) / 86400000; //day of the firt entry
@@ -362,13 +387,11 @@ function hexAgregation(
             hexDataDate
           );
         if (nbrCovid != 0) {
-          //var geometry = new THREE.SphereGeometry(hexData[hexCovidCase]["length"]); //using spheres
-          //var geometry = new THREE.CylinderGeometry(nbrCovid, nbrCovid,5); // Radius proportional to the number of covid entries
           var geometry = new THREE.CylinderBufferGeometry(
             Math.sqrt(nbrCovid) * coeffRadius,
             Math.sqrt(nbrCovid) * coeffRadius,
             5 + nbrDaysAgregation
-          ); // Area proportional to the number of covid entries, height is arbitrary
+          ); // Area proportional to the number of covid entries, arbitrary height 
           var colorMesh = colorFunction(nbrCovid);
           var material = new THREE.MeshStandardMaterial({ color: colorMesh });
           var cylinder = new THREE.Mesh(geometry, material); //a three js mesh needs a geometry and a material
@@ -437,7 +460,7 @@ init();
 const dat = require("dat.gui");
 const gui = new dat.GUI();
 
-const cubeFolder = gui.addFolder("Plage temporelle en jour depuis le 03-19");
+const cubeFolder = gui.addFolder("Temporal range in days from the 03-19");
 cubeFolder.add(temposcale, "min", 0, nbrDaysMax - 1, 1);
 cubeFolder.add(temposcale, "max", 1, nbrDaysMax, 1);
 cubeFolder.open();
@@ -480,7 +503,7 @@ function changeTempoScale() {
 gui.domElement.addEventListener("mouseup", changeTempoScale);
 
 function agregZoom(zoomLevel) {
-  // Updating the agregation level depending of the zoom level
+  // Updating the agregation level depending of the zoom level by changing the group visibility
   for (let elt in controller.threeViewer.scene.children) {
     if (
       controller.threeViewer.scene.children[elt]["name"] == "covidCaseGroup"
@@ -524,13 +547,9 @@ function agregZoom(zoomLevel) {
   }
 }
 
-//loading each group during the initialisation to avoid loading time during use
-agregZoom(1);
-agregZoom(2);
-agregZoom(3);
 
 var currentZoom = 3; //Zoom of the initial position of the camera
-agregZoom(3);
+agregZoom(currentZoom);
 
 /*_____________________________ Raycasting to select an object ___________________________*/
 
@@ -572,7 +591,7 @@ function raycasterIntersect(raycaster, currentZoom) {
   }
 }
 
-// Position of the mouse at the begining of a "pointerdown"
+// Position of the mouse at the begining of an event "pointerdown"
 var detaX = 0;
 var deltaY = 0;
 
@@ -631,7 +650,7 @@ function render() {
       }
     }
   }
-
+  
   // Updating the agregation level depending of the zoom level
   let dist = Math.sqrt(
     controller.threeViewer.currentCamera.position.x ** 2 +
