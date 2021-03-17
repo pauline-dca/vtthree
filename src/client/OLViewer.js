@@ -7,6 +7,9 @@ import { createXYZ } from "ol/tilegrid";
 import MVT from "ol/format/MVT";
 import * as olms from "ol-mapbox-style";
 import Feature from "ol/Feature";
+import TileLayer from "ol/layer/Tile";
+import XYZ from "ol/source/XYZ";
+import Stamen from "ol/source/Stamen";
 
 export const planStyle = "Plan";
 export const grisStyle = "Gris";
@@ -47,6 +50,16 @@ export class OLViewer {
       })
     });
 
+    // const carto = new TileLayer({
+    //   source: new XYZ({
+    //     url: "http://a.tile.stamen.com/toner/${z}/${x}/${y}.png"
+    //   })
+    // });
+    let stamen = new TileLayer({
+      source: new Stamen({
+        layer: "toner"
+      })
+    });
     this.layer = new VectorTileLayer({
       title: "Plan IGN vecteur",
       source: new VectorTileSource({
@@ -73,6 +86,7 @@ export class OLViewer {
       }
     }
     await olms.applyStyle(this.layer, style, "plan_ign");
-    this.map.addLayer(this.layer);
+    //this.map.addLayer(this.layer);
+    this.map.addLayer(stamen);
   }
 }
