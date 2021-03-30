@@ -214,6 +214,9 @@ export class SpatioTemporalCube {
   addAxis() {
     const loader = new THREE.FontLoader();
     var font = loader.parse(helvetiker);
+    if (this.scaleGroup != null) {
+      this.controller.threeViewer.scene.remove(this.scaleGroup);
+    }
     this.scaleGroup = new THREE.Group();
     let timeScale = d3
       .scaleLinear()
@@ -251,6 +254,7 @@ export class SpatioTemporalCube {
     this.hexGroups.forEach((hexGroup, zoomLevel) => {
       hexGroup.updateTemporalScale(temporalScale);
     });
+    this.addAxis();
   }
 
   render(cameraDistance) {
