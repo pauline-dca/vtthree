@@ -84,11 +84,32 @@ async function init() {
     controller,
     [
       {
-        radius: 100,
-        daysAggregation: 5,
+        radius: 25,
+        daysAggregation: 1,
         startDistance: 0,
         endDistance: 500,
         index: 0
+      },
+      {
+        radius: 25,
+        daysAggregation: 1,
+        startDistance: 500,
+        endDistance: 750,
+        index: 1
+      },
+      {
+        radius: 50,
+        daysAggregation: 2,
+        startDistance: 750,
+        endDistance: 1400,
+        index: 2
+      },
+      {
+        radius: 100,
+        daysAggregation: 5,
+        startDistance: 1400,
+        endDistance: 5000,
+        index: 3
       }
       // { radius: 50, daysAggregation: 2 }
     ],
@@ -180,10 +201,24 @@ init();
 const dat = require("dat.gui");
 const gui = new dat.GUI();
 
-const cubeFolder = gui.addFolder("Temporal range in days from the 03-19");
-cubeFolder.add(temposcale, "min", 0, nbrDaysMax - 1, 1);
-cubeFolder.add(temposcale, "max", 1, nbrDaysMax, 1);
-cubeFolder.open();
+// const cubeFolder = gui.addFolder("Temporal range in days from the 03-19");
+// cubeFolder.add(temposcale, "min", 0, nbrDaysMax - 1, 1);
+// cubeFolder.add(temposcale, "max", 1, nbrDaysMax, 1);
+// cubeFolder.open();
+
+let dates = { min: 0, max: 100, scale: 300 };
+let minController = gui.add(dates, "min", 0, 99, 1);
+let maxController = gui.add(dates, "max", 1, 100, 1);
+let scaleController = gui.add(dates, "scale", 100, 600, 10);
+minController.onFinishChange(function(value) {
+  stc.setCurrentDates(dates);
+});
+maxController.onFinishChange(function(value) {
+  stc.setCurrentDates(dates);
+});
+scaleController.onFinishChange(function(value) {
+  stc.setTemporalScale(dates.scale);
+});
 
 function changeTempoScale() {
   // When we change the temporal zoom, we change the altitude of the covid cases
@@ -241,16 +276,16 @@ function clickOnMap(event) {
 function render() {
   controller.threeViewer.animate();
   // Updating the rotation of texts to make them facing the user
-  for (let elt in controller.threeViewer.scene.children) {
-    if (controller.threeViewer.scene.children[elt]["name"] == "scaleGroup") {
-      for (var groupElt in controller.threeViewer.scene.children[elt]
-        .children) {
-        controller.threeViewer.scene.children[elt].children[
-          groupElt
-        ].quaternion.copy(controller.threeViewer.currentCamera.quaternion);
-      }
-    }
-  }
+  //   for (let elt in controller.threeViewer.scene.children) {
+  //     if (controller.threeViewer.scene.children[elt]["name"] == "scaleGroup") {
+  //       for (var groupElt in controller.threeViewer.scene.children[elt]
+  //         .children) {
+  //         controller.threeViewer.scene.children[elt].children[
+  //           groupElt
+  //         ].quaternion.copy(controller.threeViewer.currentCamera.quaternion);
+  //       }
+  //     }
+  //   }
 
   // Updating the agregation level depending of the zoom level
   let dist = Math.sqrt(
@@ -258,7 +293,7 @@ function render() {
       controller.threeViewer.currentCamera.position.y ** 2 +
       controller.threeViewer.currentCamera.position.z ** 2
   );
-
+  stc.render(dist);
   // The render() function is called at eatch frame
   requestAnimationFrame(render);
 }

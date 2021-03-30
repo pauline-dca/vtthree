@@ -5,6 +5,7 @@ import proj4 from "proj4";
 import { proj4326, proj3857 } from "./Utils";
 import * as THREE from "three";
 import { zoom } from "d3-zoom";
+import helvetiker from "../../node_modules/three/examples/fonts/helvetiker_regular.typeface.json";
 
 export class SpatioTemporalCube {
   data: Map<number, Map<any, number>>;
@@ -21,13 +22,19 @@ export class SpatioTemporalCube {
   }[];
   maxDate: number;
   infoPanel: HTMLElement;
+  selected: THREE.Mesh;
+  currentDates: { min: number; max: number };
+  startDate: any;
+  scaleGroup: THREE.Group;
   constructor(data, startDate, controller, zoomValues, infoPanel) {
     this.temporalScale = 300;
+    this.currentDates = { min: 0, max: 100 };
     this.controller = controller;
     this.zoomValues = zoomValues;
     this.infoPanel = infoPanel;
     this.hexGroups = new Map();
-    this.zoomLevel = 0;
+    this.zoomLevel = 3;
+    this.startDate = startDate;
     this.processData(data, startDate, zoomValues);
   }
 
@@ -85,6 +92,7 @@ export class SpatioTemporalCube {
       let positions = [];
       let positionsMap = new Map();
       let positionsIndexMap = new Map();
+      let indexPositionsMap = new Map();
       let currentIndex = 0;
       hexMap.forEach((values, date) => {
         for (let value of values) {
@@ -100,6 +108,7 @@ export class SpatioTemporalCube {
             }
             if (!positionsIndexMap.get(value.x).has(value.y)) {
               positionsIndexMap.get(value.x).set(value.y, currentIndex);
+              indexPositionsMap.set(currentIndex, { x: value.x, y: value.y });
               currentIndex++;
             }
             positionsMap
@@ -115,11 +124,16 @@ export class SpatioTemporalCube {
         positionsMap,
         this.temporalScale,
         positionsIndexMap,
-        maxDate
+        this.currentDates,
+        indexPositionsMap
       );
       this.hexGroups.set(zoomValue.index, hexagonGroup);
       this.controller.threeViewer.scene.add(hexagonGroup.group);
+      this.controller.threeViewer.scene.add(hexagonGroup.floorGroup);
     }
+    this.addAxis();
+    this.hexGroups.get(this.zoomLevel).floorGroup.visible = true;
+    this.hexGroups.get(this.zoomLevel).group.visible = true;
   }
 
   click(event) {
@@ -134,23 +148,139 @@ export class SpatioTemporalCube {
     );
     if (intersects.length > 0) {
       this.select(intersects[0].object, event);
+    } else {
+      this.select(null, event);
     }
   }
 
   select(hex: THREE.Mesh, event) {
-    //hex.material.emissive.setHex(hex.currentHex);
-    //INTERSECTED = intersects[0].object;
-    //INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-    hex.material.emissive.setHex(0xff0000);
-    //Display informations about the object
-    this.infoPanel.innerHTML = "Date : " + hex["date"];
-    if (hex.userData.endDate != undefined) {
-      this.infoPanel.innerHTML =
-        "Date : " + hex["name"] + "-" + hex.userData.endDate;
+    if (hex != null) {
+      if (this.selected != null && this.selected != hex) {
+        this.selected.material.emissive.setHex(this.selected.userData.color);
+      }
+      if (hex.userData.type == "hex") {
+        hex.material.emissive.setHex(0xff0000);
+        //Display informations about the object
+        this.infoPanel.innerHTML =
+          "Date : " + Utils.addDaysToDate(this.startDate, hex.userData.date);
+        if (this.hexGroups.get(this.zoomLevel).daysAggregation > 1) {
+          this.infoPanel.innerHTML =
+            "Date : " +
+            Utils.addDaysToDate(this.startDate, hex.userData.date) +
+            "-" +
+            Utils.addDaysToDate(
+              this.startDate,
+              hex.userData.date +
+                this.hexGroups.get(this.zoomLevel).daysAggregation
+            );
+        }
+        // if (hex.userData.endDate != undefined) {
+        //   this.infoPanel.innerHTML =
+        //     "Date : " + hex["name"] + "-" + hex.userData.endDate;
+        // }
+        this.infoPanel.style.left = event.clientX + 20 + "px";
+        this.infoPanel.style.top = event.clientY - 5 + "px";
+        this.infoPanel.style.visibility = "visible";
+        this.hexGroups.get(this.zoomLevel).select(hex.userData.hexid);
+        this.selected = hex;
+      }
+    } else {
+      if (this.selected != null) {
+        this.selected.material.emissive.setHex(this.selected.userData.color);
+        this.infoPanel.style.visibility = "hidden";
+        this.selected = null;
+        this.hexGroups.get(this.zoomLevel).select(-1);
+      }
     }
-    this.infoPanel.style.left = event.clientX + 20 + "px";
-    this.infoPanel.style.top = event.clientY - 5 + "px";
-    this.infoPanel.style.visibility = "visible";
+  }
+
+  setCurrentDates(currentDates: { min: number; max: number }) {
+    this.currentDates = currentDates;
+    this.controller.threeViewer.scene.remove(
+      this.hexGroups.get(this.zoomLevel).group
+    );
+    // for (let children of this.hexGroups.get(this.zoomLevel).group.children) {
+    //   this.controller.threeViewer.scene.remove(children);
+
+    //   this.hexGroups.get(this.zoomLevel).group.remove(children);
+    // }
+    this.hexGroups.forEach(hexGroup => {
+      hexGroup.updateMeshes(this.temporalScale, this.currentDates);
+      this.controller.threeViewer.scene.add(hexGroup.group);
+    });
+    this.addAxis();
+  }
+
+  addAxis() {
+    const loader = new THREE.FontLoader();
+    var font = loader.parse(helvetiker);
+    this.scaleGroup = new THREE.Group();
+    let timeScale = d3
+      .scaleLinear()
+      .domain([0, this.temporalScale])
+      .range([this.currentDates.min, this.currentDates.max]);
+
+    var nbrLegends = 6; // Nbr of texts forming the temporal legend
+    for (let i = 0; i <= nbrLegends; i++) {
+      let date = timeScale((i * this.temporalScale) / nbrLegends);
+      let dateString = Utils.addDaysToDate(this.startDate, date);
+      const axegeometry = new THREE.TextGeometry(dateString + "__", {
+        font: font,
+        size: 16,
+        height: 5,
+        curveSegments: 50,
+        bevelEnabled: false,
+        bevelThickness: 5,
+        bevelSize: 1,
+        bevelOffset: 0,
+        bevelSegments: 5
+      });
+
+      var axematerial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+      var axe = new THREE.Mesh(axegeometry, axematerial); //a three js mesh needs a geometry and a material
+      axe.position.x = -1000;
+      axe.position.y = -70;
+      axe.position.z = (i * this.temporalScale) / nbrLegends + 3;
+      this.scaleGroup.add(axe); //all objects have to be added to the threejs scene
+    }
+    this.controller.threeViewer.scene.add(this.scaleGroup); //the group is added to the scene
+  }
+
+  setTemporalScale(temporalScale) {
+    this.temporalScale = temporalScale;
+    this.hexGroups.forEach((hexGroup, zoomLevel) => {
+      hexGroup.updateTemporalScale(temporalScale);
+    });
+  }
+
+  render(cameraDistance) {
+    for (let zoomValue of this.zoomValues) {
+      if (
+        cameraDistance < zoomValue.endDistance &&
+        cameraDistance >= zoomValue.startDistance
+      ) {
+        if (this.zoomLevel != zoomValue.index) {
+          this.zoomLevel = zoomValue.index;
+          this.hexGroups.forEach((hexGroup, index) => {
+            if (index == this.zoomLevel) {
+              hexGroup.group.visible = true;
+              hexGroup.floorGroup.visible = true;
+            } else {
+              hexGroup.group.visible = false;
+              hexGroup.floorGroup.visible = false;
+            }
+          });
+        }
+      }
+    }
+    // this.scaleGroup.quaternion.copy(
+    //   this.controller.threeViewer.currentCamera.quaternion
+    // );
+    for (let element of this.scaleGroup.children) {
+      element.quaternion.copy(
+        this.controller.threeViewer.currentCamera.quaternion
+      );
+    }
   }
 }
 
@@ -158,23 +288,34 @@ export class HexagonGroup {
   radius: number;
   daysAggregation: number;
   group: THREE.Group;
+  floorGroup: THREE.Group;
   positionsMap: any;
-  positionsIndexMap: any;
+  positionsIndexMap: Map<number, Map<number, number>>;
+  indexPositionsMap: Map<number, { x: number; y: number }>;
+  meshMap: Map<number, Map<number, THREE.Mesh[]>>;
+  floorMeshMap: Map<number, Map<number, THREE.Mesh>>;
+  currentDates: { min: number; max: number };
   maxDate: number;
+  maxValue: any;
   constructor(
     radius,
     daysAggregation,
     positionsMap,
     temporalScale,
     positionsIndexMap,
-    maxDate
+    currentDates,
+    indexPositionsMap
   ) {
     this.radius = radius;
     this.daysAggregation = daysAggregation;
     this.group = new THREE.Group();
+    this.floorGroup = new THREE.Group();
     this.positionsIndexMap = positionsIndexMap;
+    this.indexPositionsMap = indexPositionsMap;
     this.positionsMap = positionsMap;
-    this.maxDate = maxDate;
+    this.currentDates = currentDates;
+    this.maxDate = 100;
+
     this.createMeshes(temporalScale);
   }
 
@@ -240,12 +381,55 @@ export class HexagonGroup {
     return { value: maxValue, date: maxDate, x: maxX, y: maxY };
   }
 
+  select(hexIndex) {
+    if (hexIndex != -1) {
+      let position = this.indexPositionsMap.get(hexIndex);
+
+      this.meshMap.forEach((yMap, xPos) => {
+        yMap.forEach((meshes, yPos) => {
+          for (let mesh of meshes) {
+            if (!(xPos == position.x && yPos == position.y)) {
+              mesh.material.opacity = 0.1;
+            } else {
+              console.log(mesh.userData.type);
+              mesh.material.opacity = 1.0;
+            }
+          }
+        });
+      });
+      this.floorMeshMap.forEach((yMap, xPos) => {
+        yMap.forEach((mesh, yPos) => {
+          if (!(xPos == position.x && yPos == position.y)) {
+            mesh.material.opacity = 0.1;
+          } else {
+            console.log(mesh.userData.type);
+            mesh.material.opacity = 0.5;
+          }
+        });
+      });
+    } else {
+      this.meshMap.forEach((yMap, xPos) => {
+        yMap.forEach((meshes, yPos) => {
+          for (let mesh of meshes) {
+            mesh.material.opacity = 1.0;
+          }
+        });
+      });
+      this.floorMeshMap.forEach((yMap, xPos) => {
+        yMap.forEach((mesh, yPos) => {
+          mesh.material.opacity = 0.1;
+        });
+      });
+    }
+  }
+
   createMeshes(temporalScale) {
-    var materialGrid = new THREE.MeshStandardMaterial({ color: "green" });
-    materialGrid.transparent = true;
-    materialGrid.opacity = 0.2;
     let dates = [];
-    for (let i = 0; i < 100; i += this.daysAggregation) {
+    for (
+      let i = this.currentDates.min;
+      i < this.currentDates.max;
+      i += this.daysAggregation
+    ) {
       dates.push(i);
     }
 
@@ -261,10 +445,12 @@ export class HexagonGroup {
 
     let timeScale = d3
       .scaleLinear()
-      .domain([0, this.maxDate])
+      .domain([this.currentDates.min, this.currentDates.max])
       .range([0, temporalScale]);
     let colorScale = d3.scaleQuantize([0, maxValue.value], d3.schemeGreens[9]);
 
+    let meshMap = new Map();
+    this.floorMeshMap = new Map();
     aggregatedMap.forEach((xMap, date) => {
       let z = timeScale(date);
       xMap.forEach((yMap, xPos) => {
@@ -274,7 +460,8 @@ export class HexagonGroup {
             var geometry = new THREE.CylinderBufferGeometry(
               radius,
               radius,
-              (temporalScale / this.maxDate) * this.daysAggregation,
+              //(temporalScale / this.maxDate) * this.daysAggregation,
+              1,
               6
             ); // Area proportional to the number of covid entries, arbitrary height
             var colorMesh = colorScale(value);
@@ -285,23 +472,42 @@ export class HexagonGroup {
             cylinder.position.y = yPos;
             cylinder.position.z = z;
             cylinder.rotation.x = Math.PI / 2;
+            cylinder.scale.setY(
+              (temporalScale /
+                (this.currentDates.max - this.currentDates.min)) *
+                this.daysAggregation
+            );
             //dateToAlti(hexDataDate) + (3 * nbrDaysAgregation) / 2;
             // cylinder.name = hexDataDate;
             cylinder.userData.hexid = this.positionsIndexMap
               .get(xPos)
               .get(yPos);
+            cylinder.userData.type = "hex";
+            cylinder.userData.color = colorMesh;
+            cylinder.userData.date = date;
             if (this.daysAggregation > 1) {
               // cylinder.userData.endDate = Utils.addDaysToDate(
               //   hexDataDate,
               //   nbrDaysAgregation
               // );
             }
+            if (meshMap.get(xPos) == null) {
+              meshMap.set(xPos, new Map());
+            }
+            if (meshMap.get(xPos).get(yPos) == null) {
+              meshMap.get(xPos).set(yPos, []);
+            }
+
+            meshMap
+              .get(xPos)
+              .get(yPos)
+              .push(cylinder);
             this.group.add(cylinder);
           }
         });
       });
     });
-
+    this.meshMap = meshMap;
     let hex = [];
     for (let i = 1; i <= 6; i++) {
       hex.push([
@@ -324,6 +530,9 @@ export class HexagonGroup {
 
     this.positionsIndexMap.forEach((yMap, xPos) => {
       yMap.forEach((index, yPos) => {
+        var materialGrid = new THREE.MeshStandardMaterial({ color: "green" });
+        materialGrid.transparent = true;
+        materialGrid.opacity = 0.2;
         const mesh = new THREE.Mesh(shape3d, materialGrid);
         mesh.position.x = xPos;
         mesh.position.y = yPos;
@@ -331,7 +540,18 @@ export class HexagonGroup {
         mesh.rotation.z = Math.PI / 2;
         mesh.renderOrder = 1;
         mesh.userData.floorId = index;
-        this.group.add(mesh);
+        mesh.userData.type = "floor";
+        this.floorGroup.add(mesh);
+        if (this.floorMeshMap.get(xPos) == null) {
+          this.floorMeshMap.set(xPos, new Map());
+        }
+        this.floorMeshMap.get(xPos).set(yPos, mesh);
+        // if (this.meshMap.has(xPos) && this.meshMap.get(xPos).has(yPos)) {
+        //   this.meshMap
+        //     .get(xPos)
+        //     .get(yPos)
+        //     .push(mesh);
+        // }
 
         let line = new THREE.Line(
           geometryPoints,
@@ -342,7 +562,126 @@ export class HexagonGroup {
         line.position.y = yPos;
         line.position.z = 0.1;
         line.renderOrder = 2;
-        this.group.add(line);
+        line.userData.type = "floor";
+        this.floorGroup.add(line);
+        // this.meshMap
+        //   .get(xPos)
+        //   .get(yPos)
+        //   .push(line);
+      });
+    });
+    this.group.visible = false;
+    this.floorGroup.visible = false;
+  }
+
+  updateMeshes(temporalScale, currentDates) {
+    // for (let children of this.group.children) {
+    //   this.group.remove(children);
+    // }
+    this.group = new THREE.Group();
+    this.currentDates = currentDates;
+    let dates = [];
+    for (
+      let i = this.currentDates.min;
+      i < this.currentDates.max;
+      i += this.daysAggregation
+    ) {
+      dates.push(i);
+    }
+
+    let aggregatedMap = this.temporalAggregation(dates, this.positionsMap);
+    this.maxValue = this.getMaxValue(aggregatedMap);
+    let maxArea = Utils.hexagonArea(this.radius);
+    let areaScale = d3
+      .scaleLinear()
+      .domain([0, this.maxValue.value])
+      .range([0, maxArea]);
+
+    let timeScale = d3
+      .scaleLinear()
+      .domain([this.currentDates.min, this.currentDates.max])
+      .range([0, temporalScale]);
+    let colorScale = d3.scaleQuantize(
+      [0, this.maxValue.value],
+      d3.schemeGreens[9]
+    );
+
+    let meshMap = new Map();
+    aggregatedMap.forEach((xMap, date) => {
+      let z = timeScale(date);
+      xMap.forEach((yMap, xPos) => {
+        yMap.forEach((value, yPos) => {
+          if (value != 0) {
+            let radius = Utils.rforHexagonArea(areaScale(value));
+            var geometry = new THREE.CylinderBufferGeometry(
+              radius,
+              radius,
+              //(temporalScale / this.maxDate) * this.daysAggregation,
+              1,
+              6
+            ); // Area proportional to the number of covid entries, arbitrary height
+            var colorMesh = colorScale(value);
+            var material = new THREE.MeshStandardMaterial({ color: colorMesh });
+            material.transparent = true;
+            var cylinder = new THREE.Mesh(geometry, material); //a three js mesh needs a geometry and a material
+            cylinder.position.x = xPos;
+            cylinder.position.y = yPos;
+            cylinder.position.z = z;
+            cylinder.rotation.x = Math.PI / 2;
+            cylinder.scale.setY(
+              (temporalScale /
+                (this.currentDates.max - this.currentDates.min)) *
+                this.daysAggregation
+            );
+            //dateToAlti(hexDataDate) + (3 * nbrDaysAgregation) / 2;
+            // cylinder.name = hexDataDate;
+            cylinder.userData.hexid = this.positionsIndexMap
+              .get(xPos)
+              .get(yPos);
+            cylinder.userData.type = "hex";
+            cylinder.userData.color = colorMesh;
+            cylinder.userData.date = date;
+            if (this.daysAggregation > 1) {
+              // cylinder.userData.endDate = Utils.addDaysToDate(
+              //   hexDataDate,
+              //   nbrDaysAgregation
+              // );
+            }
+            if (meshMap.get(xPos) == null) {
+              meshMap.set(xPos, new Map());
+            }
+            if (meshMap.get(xPos).get(yPos) == null) {
+              meshMap.get(xPos).set(yPos, []);
+            }
+
+            meshMap
+              .get(xPos)
+              .get(yPos)
+              .push(cylinder);
+            this.group.add(cylinder);
+          }
+        });
+      });
+    });
+    this.group.visible = false;
+    this.meshMap = meshMap;
+  }
+
+  updateTemporalScale(temporalScale) {
+    let timeScale = d3
+      .scaleLinear()
+      .domain([this.currentDates.min, this.currentDates.max])
+      .range([0, temporalScale]);
+    this.meshMap.forEach((yMap, xPos) => {
+      yMap.forEach((meshes, ypos) => {
+        for (let mesh of meshes) {
+          let z = timeScale(mesh.userData.date);
+          mesh.position.z = z;
+          mesh.scale.setY(
+            (temporalScale / (this.currentDates.max - this.currentDates.min)) *
+              this.daysAggregation
+          );
+        }
       });
     });
   }
