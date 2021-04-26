@@ -56,13 +56,14 @@ let covidCaseGroup = null;
 let stc = null;
 async function init() {
   //create elements for raycasting
-  let container = document.createElement("div");
-  document.body.appendChild(container);
-  raycaster = new THREE.Raycaster();
-  renderer = new THREE.WebGLRenderer();
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  container.appendChild(renderer.domElement);
+  // let container = document.createElement("div");
+  // document.body.appendChild(container);
+  // raycaster = new THREE.Raycaster();
+  // renderer = new THREE.WebGLRenderer();
+  // renderer.setPixelRatio(window.devicePixelRatio);
+  // renderer.setSize(window.innerWidth, window.innerHeight);
+  // container.appendChild(renderer.domElement);
+
   document.addEventListener("mousemove", onDocumentMouseMove, false);
 
   // to read tiff file: https://geotiffjs.github.io/geotiff.js/. other files to be read should be added to the data folder
@@ -119,7 +120,7 @@ async function init() {
   //Adding the covid cases with one cube by entry
   covidCaseGroup = new THREE.Group();
   covidCaseGroup.name = "covidCaseGroup";
-  addObjects(covidCaseGroup);
+  //addObjects(covidCaseGroup);
 }
 
 //Track mouse position
@@ -275,17 +276,8 @@ function clickOnMap(event) {
 /*_____________________________ rendering funciton ___________________________*/
 function render() {
   controller.threeViewer.animate();
+
   // Updating the rotation of texts to make them facing the user
-  //   for (let elt in controller.threeViewer.scene.children) {
-  //     if (controller.threeViewer.scene.children[elt]["name"] == "scaleGroup") {
-  //       for (var groupElt in controller.threeViewer.scene.children[elt]
-  //         .children) {
-  //         controller.threeViewer.scene.children[elt].children[
-  //           groupElt
-  //         ].quaternion.copy(controller.threeViewer.currentCamera.quaternion);
-  //       }
-  //     }
-  //   }
 
   // Updating the agregation level depending of the zoom level
   let dist = Math.sqrt(
@@ -293,6 +285,7 @@ function render() {
       controller.threeViewer.currentCamera.position.y ** 2 +
       controller.threeViewer.currentCamera.position.z ** 2
   );
+
   stc.render(dist);
   // The render() function is called at eatch frame
   requestAnimationFrame(render);

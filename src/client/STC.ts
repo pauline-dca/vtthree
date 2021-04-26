@@ -451,7 +451,14 @@ export class HexagonGroup {
       .scaleLinear()
       .domain([this.currentDates.min, this.currentDates.max])
       .range([0, temporalScale]);
-    let colorScale = d3.scaleQuantize([0, maxValue.value], d3.schemeGreens[9]);
+    let colorScale = d3.scaleQuantize(
+      [0, maxValue.value],
+      ["#c7e9c0", "#a1d99b", "#74c476", "#41ab5d", "#238b45", "#005a32"]
+      //["#c7e9c0", "#a1d99b", "#74c476", "#41ab5d", "#238b45", "#005a32"]
+      // ['#fdd0a2','#fdae6b','#fd8d3c','#f16913','#d94801','#8c2d04']
+      //['#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#0c2c84']
+      // ['#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#b10026'],
+    );
 
     let meshMap = new Map();
     this.floorMeshMap = new Map();

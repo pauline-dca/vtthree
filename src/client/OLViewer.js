@@ -60,6 +60,11 @@ export class OLViewer {
         layer: "toner"
       })
     });
+
+    // let osmlayer = new ol.layer.Tile({
+    //   source: new ol.source.OSM()
+    // });
+
     this.layer = new VectorTileLayer({
       title: "Plan IGN vecteur",
       source: new VectorTileSource({
@@ -76,17 +81,20 @@ export class OLViewer {
     });
 
     var defaultUrl = ignStyleMap.get(styleName);
-    let response = await fetch(defaultUrl);
-    let style = await response.json();
 
-    for (let layer of style.layers) {
-      console.log(layer.type);
-      if (layer.type == "background") {
-        console.log("BACKGROUND");
-      }
-    }
-    await olms.applyStyle(this.layer, style, "plan_ign");
+    //problem with ign address
+    //let response = await fetch(defaultUrl);
+    //let style = await response.json();
+
+    // for (let layer of style.layers) {
+    //   console.log(layer.type);
+    //   if (layer.type == "background") {
+    //     console.log("BACKGROUND");
+    //   }
+    // }
+    //await olms.applyStyle(this.layer, style, "plan_ign");
     //this.map.addLayer(this.layer);
+
     this.map.addLayer(stamen);
   }
 }
