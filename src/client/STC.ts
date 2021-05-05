@@ -6,6 +6,7 @@ import { proj4326, proj3857 } from "./Utils";
 import * as THREE from "three";
 import { zoom } from "d3-zoom";
 import helvetiker from "../../node_modules/three/examples/fonts/helvetiker_regular.typeface.json";
+import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils";
 
 export class SpatioTemporalCube {
   data: Map<number, Map<any, number>>;
@@ -26,9 +27,14 @@ export class SpatioTemporalCube {
   currentDates: { min: number; max: number };
   startDate: any;
   scaleGroup: THREE.Group;
+  timeScale: any;
   constructor(data, startDate, controller, zoomValues, infoPanel) {
     this.temporalScale = 300;
     this.currentDates = { min: 0, max: 100 };
+    this.timeScale = d3
+      .scaleLinear()
+      .domain([this.currentDates.min, this.currentDates.max])
+      .range([0, this.temporalScale]);
     this.controller = controller;
     this.zoomValues = zoomValues;
     this.infoPanel = infoPanel;
@@ -68,72 +74,103 @@ export class SpatioTemporalCube {
 
     for (let i = 0; i < zoomValues.length; i++) {
       let zoomValue = zoomValues[i];
-      let hexMap = new Map();
-      // let pointGrid = this.getPointGrid(
-      //   zoomValue.radius,
-      //   Math.floor(extent.maxX - extent.minX) + 1000,
-      //   Math.floor(extent.maxY - extent.minY) + 1000
-      // );
-      datesMap.forEach((values, date) => {
-        // let mergedPoints = pointGrid.concat(values);
-        let hexbin = d3hexbin
-          .hexbin()
-          .radius(zoomValue.radius)
-          .x(function(d) {
-            return d.x;
-          })
-          .y(function(d) {
-            return d.y;
-          });
+      if (zoomValue.radius == 0) {
+        let group = this.addCasesMeshes(datesMap);
+        this.hexGroups.set(zoomValue.index, { group: group });
+        this.controller.threeViewer.scene.add(group);
+      } else {
+        let hexMap = new Map();
+        // let pointGrid = this.getPointGrid(
+        //   zoomValue.radius,
+        //   Math.floor(extent.maxX - extent.minX) + 1000,
+        //   Math.floor(extent.maxY - extent.minY) + 1000
+        // );
+        datesMap.forEach((values, date) => {
+          // let mergedPoints = pointGrid.concat(values);
+          let hexbin = d3hexbin
+            .hexbin()
+            .radius(zoomValue.radius)
+            .x(function(d) {
+              return d.x;
+            })
+            .y(function(d) {
+              return d.y;
+            });
 
-        var hexPoints = hexbin(values);
-        hexMap.set(date, hexPoints);
-      });
-      let positions = [];
-      let positionsMap = new Map();
-      let positionsIndexMap = new Map();
-      let indexPositionsMap = new Map();
-      let currentIndex = 0;
-      hexMap.forEach((values, date) => {
-        for (let value of values) {
-          if (value.length > 0) {
-            if (!positionsMap.has(value.x)) {
-              positionsMap.set(value.x, new Map());
+          var hexPoints = hexbin(values);
+          hexMap.set(date, hexPoints);
+        });
+        let positions = [];
+        let positionsMap = new Map();
+        let positionsIndexMap = new Map();
+        let indexPositionsMap = new Map();
+        let currentIndex = 0;
+        hexMap.forEach((values, date) => {
+          for (let value of values) {
+            if (value.length > 0) {
+              if (!positionsMap.has(value.x)) {
+                positionsMap.set(value.x, new Map());
+              }
+              if (!positionsIndexMap.has(value.x)) {
+                positionsIndexMap.set(value.x, new Map());
+              }
+              if (!positionsMap.get(value.x).has(value.y)) {
+                positionsMap.get(value.x).set(value.y, new Map());
+              }
+              if (!positionsIndexMap.get(value.x).has(value.y)) {
+                positionsIndexMap.get(value.x).set(value.y, currentIndex);
+                indexPositionsMap.set(currentIndex, { x: value.x, y: value.y });
+                currentIndex++;
+              }
+              positionsMap
+                .get(value.x)
+                .get(value.y)
+                .set(date, value.length);
             }
-            if (!positionsIndexMap.has(value.x)) {
-              positionsIndexMap.set(value.x, new Map());
-            }
-            if (!positionsMap.get(value.x).has(value.y)) {
-              positionsMap.get(value.x).set(value.y, new Map());
-            }
-            if (!positionsIndexMap.get(value.x).has(value.y)) {
-              positionsIndexMap.get(value.x).set(value.y, currentIndex);
-              indexPositionsMap.set(currentIndex, { x: value.x, y: value.y });
-              currentIndex++;
-            }
-            positionsMap
-              .get(value.x)
-              .get(value.y)
-              .set(date, value.length);
           }
-        }
-      });
-      let hexagonGroup = new HexagonGroup(
-        zoomValue.radius,
-        zoomValue.daysAggregation,
-        positionsMap,
-        this.temporalScale,
-        positionsIndexMap,
-        this.currentDates,
-        indexPositionsMap
-      );
-      this.hexGroups.set(zoomValue.index, hexagonGroup);
-      this.controller.threeViewer.scene.add(hexagonGroup.group);
-      this.controller.threeViewer.scene.add(hexagonGroup.floorGroup);
+        });
+        let hexagonGroup = new HexagonGroup(
+          zoomValue.radius,
+          zoomValue.daysAggregation,
+          positionsMap,
+          this.temporalScale,
+          positionsIndexMap,
+          this.currentDates,
+          indexPositionsMap
+        );
+        this.hexGroups.set(zoomValue.index, hexagonGroup);
+        this.controller.threeViewer.scene.add(hexagonGroup.group);
+        this.controller.threeViewer.scene.add(hexagonGroup.floorGroup);
+      }
     }
     this.addAxis();
-    this.hexGroups.get(this.zoomLevel).floorGroup.visible = true;
+    if (this.hexGroups.get(this.zoomLevel).floorGroup != null) {
+      this.hexGroups.get(this.zoomLevel).floorGroup.visible = true;
+    }
+
     this.hexGroups.get(this.zoomLevel).group.visible = true;
+  }
+
+  addCasesMeshes(datesMap: Map<number, any>) {
+    let baseGroup = new THREE.Group();
+    let material = new THREE.MeshStandardMaterial({ color: "#C6F499" });
+    let geometries = [];
+    datesMap.forEach((events, date) => {
+      for (let event of events) {
+        var geometry = new THREE.BoxBufferGeometry(3, 3, 3);
+        let z = this.timeScale(date);
+        geometry.translate(event.x, event.y, z);
+        geometries.push(geometry);
+      }
+    });
+    const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(
+      geometries,
+      false
+    );
+    const mesh = new THREE.Mesh(mergedGeometry, material);
+    baseGroup.add(mesh);
+    baseGroup.visible = false;
+    return baseGroup;
   }
 
   click(event) {
@@ -195,10 +232,17 @@ export class SpatioTemporalCube {
   }
 
   setCurrentDates(currentDates: { min: number; max: number }) {
+    this.timeScale = d3
+      .scaleLinear()
+      .domain([0, this.temporalScale])
+      .range([this.currentDates.min, this.currentDates.max]);
     this.currentDates = currentDates;
-    this.controller.threeViewer.scene.remove(
-      this.hexGroups.get(this.zoomLevel).group
-    );
+    // this.controller.threeViewer.scene.remove(
+    //   this.hexGroups.get(this.zoomLevel).group
+    // );
+    this.hexGroups.forEach(hexGroup => {
+      this.controller.threeViewer.scene.remove(hexGroup.group);
+    });
     // for (let children of this.hexGroups.get(this.zoomLevel).group.children) {
     //   this.controller.threeViewer.scene.remove(children);
 
@@ -208,6 +252,7 @@ export class SpatioTemporalCube {
       hexGroup.updateMeshes(this.temporalScale, this.currentDates);
       this.controller.threeViewer.scene.add(hexGroup.group);
     });
+    this.hexGroups.get(this.zoomLevel).group.visible = true;
     this.addAxis();
   }
 
@@ -268,10 +313,14 @@ export class SpatioTemporalCube {
           this.hexGroups.forEach((hexGroup, index) => {
             if (index == this.zoomLevel) {
               hexGroup.group.visible = true;
-              hexGroup.floorGroup.visible = true;
+              if (hexGroup.floorGroup != null) {
+                hexGroup.floorGroup.visible = true;
+              }
             } else {
               hexGroup.group.visible = false;
-              hexGroup.floorGroup.visible = false;
+              if (hexGroup.floorGroup != null) {
+                hexGroup.floorGroup.visible = false;
+              }
             }
           });
         }

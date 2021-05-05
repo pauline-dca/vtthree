@@ -8,6 +8,7 @@ import proj4 from "proj4";
 import { proj4326, proj3857 } from "./Utils";
 import helvetiker from "../../node_modules/three/examples/fonts/helvetiker_regular.typeface.json";
 import { SpatioTemporalCube } from "./STC";
+import { ARButton } from "three/examples/jsm/webxr/ARButton";
 
 //data can be imported like this or read from the data folder
 //import covidData from "../../data/covid_data.json";
@@ -57,45 +58,43 @@ async function init() {
     false
   );
 
+  controller.threeViewer.renderer.xr.enabled = true;
+  document.body.appendChild(
+    ARButton.createButton(controller.threeViewer.renderer)
+  );
+
   stc = new SpatioTemporalCube(
     covidData,
     "2020-03-19",
     controller,
     [
       {
-        radius: 0,
-        daysAggregation: 0,
+        radius: 25,
+        daysAggregation: 1,
         startDistance: 0,
-        endDistance: 400,
+        endDistance: 500,
         index: 0
       },
       {
         radius: 25,
         daysAggregation: 1,
-        startDistance: 400,
-        endDistance: 600,
+        startDistance: 500,
+        endDistance: 750,
         index: 1
-      },
-      {
-        radius: 25,
-        daysAggregation: 1,
-        startDistance: 600,
-        endDistance: 800,
-        index: 2
       },
       {
         radius: 50,
         daysAggregation: 2,
-        startDistance: 800,
+        startDistance: 750,
         endDistance: 1400,
-        index: 3
+        index: 2
       },
       {
         radius: 100,
         daysAggregation: 5,
         startDistance: 1400,
         endDistance: 5000,
-        index: 4
+        index: 3
       }
       // { radius: 50, daysAggregation: 2 }
     ],
