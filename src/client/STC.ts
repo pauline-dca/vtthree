@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { zoom } from "d3-zoom";
 import helvetiker from "../../node_modules/three/examples/fonts/helvetiker_regular.typeface.json";
 import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils";
+import { NotEqualStencilFunc } from "three";
 
 export class SpatioTemporalCube {
   data: Map<number, Map<any, number>>;
@@ -28,9 +29,18 @@ export class SpatioTemporalCube {
   startDate: any;
   scaleGroup: THREE.Group;
   timeScale: any;
-  constructor(data, startDate, controller, zoomValues, infoPanel) {
-    this.temporalScale = 300;
-    this.currentDates = { min: 0, max: 100 };
+  datesMap: any;
+  constructor(
+    data,
+    startDate,
+    controller,
+    zoomValues,
+    infoPanel,
+    temporalScale
+  ) {
+    this.temporalScale = temporalScale;
+    let range = this.getDataRange(data);
+    this.currentDates = { min: 0, max: range.days };
     this.timeScale = d3
       .scaleLinear()
       .domain([this.currentDates.min, this.currentDates.max])
@@ -41,7 +51,35 @@ export class SpatioTemporalCube {
     this.hexGroups = new Map();
     this.zoomLevel = 3;
     this.startDate = startDate;
-    this.processData(data, startDate, zoomValues);
+
+    //this.processData(data, startDate, zoomValues);
+    this.processData(data, range.min, zoomValues);
+  }
+
+  getDataRange(data) {
+    let minDate = null;
+    let maxDate = null;
+    for (let event of data) {
+      let date = new Date(event.date);
+      if (minDate == null) {
+        minDate = date;
+      }
+      if (maxDate == null) {
+        maxDate = date;
+      } else {
+        if (date < minDate) {
+          minDate = date;
+        }
+        if (date > maxDate) {
+          maxDate = date;
+        }
+      }
+    }
+    return {
+      min: minDate,
+      max: maxDate,
+      days: Utils.getDiffDate(minDate, maxDate)
+    };
   }
 
   processData(data, startDate, zoomValues) {
@@ -68,6 +106,7 @@ export class SpatioTemporalCube {
         maxDate = date;
       }
     });
+    this.datesMap = datesMap;
     this.maxDate = maxDate;
 
     //let extent = this.getDataExtent(datesMap);
@@ -157,7 +196,7 @@ export class SpatioTemporalCube {
     let geometries = [];
     datesMap.forEach((events, date) => {
       for (let event of events) {
-        var geometry = new THREE.BoxBufferGeometry(3, 3, 3);
+        var geometry = new THREE.BoxBufferGeometry(0.5, 0.5, 0.5);
         let z = this.timeScale(date);
         geometry.translate(event.x, event.y, z);
         geometries.push(geometry);
@@ -248,9 +287,18 @@ export class SpatioTemporalCube {
 
     //   this.hexGroups.get(this.zoomLevel).group.remove(children);
     // }
-    this.hexGroups.forEach(hexGroup => {
-      hexGroup.updateMeshes(this.temporalScale, this.currentDates);
-      this.controller.threeViewer.scene.add(hexGroup.group);
+    this.hexGroups.forEach((hexGroup, zoomLevel) => {
+      if (hexGroup.updateMeshes != null) {
+        hexGroup.updateMeshes(this.temporalScale, this.currentDates);
+        this.controller.threeViewer.scene.add(hexGroup.group);
+      } else {
+        let group = this.addCasesMeshes(this.datesMap);
+        this.hexGroups.set(zoomLevel, { group: group });
+        this.controller.threeViewer.scene.add(group);
+        if (this.zoomLevel == zoomLevel) {
+          group.visible = true;
+        }
+      }
     });
     this.hexGroups.get(this.zoomLevel).group.visible = true;
     this.addAxis();
@@ -274,7 +322,7 @@ export class SpatioTemporalCube {
       let dateString = Utils.addDaysToDate(this.startDate, date);
       const axegeometry = new THREE.TextGeometry(dateString + "__", {
         font: font,
-        size: 16,
+        size: 4,
         height: 5,
         curveSegments: 50,
         bevelEnabled: false,
@@ -286,8 +334,8 @@ export class SpatioTemporalCube {
 
       var axematerial = new THREE.MeshStandardMaterial({ color: 0x000000 });
       var axe = new THREE.Mesh(axegeometry, axematerial); //a three js mesh needs a geometry and a material
-      axe.position.x = -1000;
-      axe.position.y = -70;
+      axe.position.x = -100;
+      axe.position.y = -10;
       axe.position.z = (i * this.temporalScale) / nbrLegends + 3;
       this.scaleGroup.add(axe); //all objects have to be added to the threejs scene
     }
@@ -297,7 +345,17 @@ export class SpatioTemporalCube {
   setTemporalScale(temporalScale) {
     this.temporalScale = temporalScale;
     this.hexGroups.forEach((hexGroup, zoomLevel) => {
-      hexGroup.updateTemporalScale(temporalScale);
+      if (hexGroup.updateTemporalScale != null) {
+        hexGroup.updateTemporalScale(temporalScale);
+      } else {
+        this.controller.threeViewer.scene.remove(hexGroup.group);
+        let group = this.addCasesMeshes(this.datesMap);
+        this.hexGroups.set(zoomLevel, { group: group });
+        this.controller.threeViewer.scene.add(group);
+        if (this.zoomLevel == zoomLevel) {
+          group.visible = true;
+        }
+      }
     });
     this.addAxis();
   }

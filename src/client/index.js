@@ -8,11 +8,13 @@ import proj4 from "proj4";
 import { proj4326, proj3857 } from "./Utils";
 import helvetiker from "../../node_modules/three/examples/fonts/helvetiker_regular.typeface.json";
 import { SpatioTemporalCube } from "./STC";
+import { zoomValuesJacques, zoomValuesMaxime } from "./ZoomValues";
 
 //data can be imported like this or read from the data folder
 //import covidData from "../../data/covid_data.json";
 //import clusterCovidData from "../../data/clusters100.json";
-import covidData from "../../data/covid_data_jacques.json";
+import covidDataJacques from "../../data/covid_data_jacques.json";
+import covidDataMaxime from "../../data/data_maxime.json";
 
 const width = window.innerWidth; // this makes the 3D canvas full screen
 const height = window.innerHeight; // this makes the 3D canvas full screen
@@ -34,18 +36,27 @@ const paramsCovid = {
   style: planStyle
 };
 
-let infoPanel = document.getElementById("infoPanel");
-document.addEventListener("pointerdown", clickPosition);
-document.addEventListener("pointerup", clickOnMap);
+let paramsJacques = {
+  data: covidDataJacques,
+  zoomValues: zoomValuesJacques,
+  temporalScale: 300
+};
 
-var temposcale = new TempoScale(0, nbrDaysMax);
+let paramsMaxime = {
+  data: covidDataMaxime,
+  zoomValues: zoomValuesMaxime,
+  temporalScale: 50
+};
+
+let paramsViz = paramsMaxime;
+
+let infoPanel = document.getElementById("infoPanel");
+
 let params = paramsCovid;
 let controller = null;
 let covidCaseGroup = null;
 let stc = null;
 async function init() {
-  document.addEventListener("mousemove", onDocumentMouseMove, false);
-
   controller = new VTController(
     width,
     height,
@@ -57,127 +68,17 @@ async function init() {
     false
   );
 
+  let startDataJacques = "2021/08/16";
+  let startDataMaxime = "2021/08/16";
   stc = new SpatioTemporalCube(
-    covidData,
-    "2020-03-19",
+    paramsViz.data,
+    startDataMaxime,
     controller,
-    [
-      {
-        radius: 0,
-        daysAggregation: 0,
-        startDistance: 0,
-        endDistance: 400,
-        index: 0
-      },
-      {
-        radius: 25,
-        daysAggregation: 1,
-        startDistance: 400,
-        endDistance: 600,
-        index: 1
-      },
-      {
-        radius: 25,
-        daysAggregation: 1,
-        startDistance: 600,
-        endDistance: 800,
-        index: 2
-      },
-      {
-        radius: 50,
-        daysAggregation: 2,
-        startDistance: 800,
-        endDistance: 1400,
-        index: 3
-      },
-      {
-        radius: 100,
-        daysAggregation: 5,
-        startDistance: 1400,
-        endDistance: 5000,
-        index: 4
-      }
-      // { radius: 50, daysAggregation: 2 }
-    ],
-    infoPanel
+    paramsViz.zoomValues,
+    infoPanel,
+    paramsViz.temporalScale
   );
-
-  //Adding the covid cases with one cube by entry
-  covidCaseGroup = new THREE.Group();
-  covidCaseGroup.name = "covidCaseGroup";
-  //addObjects(covidCaseGroup);
 }
-
-//Track mouse position
-function onDocumentMouseMove(event) {
-  event.preventDefault();
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-}
-
-/*_________________________ Function creating and filling the groups storing 3D objects _______________________*/
-
-// Adding the covid cases with one cube by entry
-function addObjects(covidCaseGroup) {
-  for (let covidCase in covidData) {
-    let tokenLatLon = [
-      parseFloat(covidData[covidCase]["lat"]),
-      parseFloat(covidData[covidCase]["lon"])
-    ];
-    let tokenCenter = proj4(proj4326, proj3857, [
-      tokenLatLon[1],
-      tokenLatLon[0]
-    ]);
-    let worldCoords = controller.threeViewer.getWorldCoords(tokenCenter); // the getWorldCoords function transform webmercator coordinates into three js world coordinates
-    var geometry = new THREE.BoxBufferGeometry(3, 3, 3);
-    var material = new THREE.MeshStandardMaterial({ color: "#C6F499" });
-    var cube = new THREE.Mesh(geometry, material); //a three js mesh needs a geometry and a material
-    cube.position.x = worldCoords[0];
-    cube.position.y = worldCoords[1];
-    cube.position.z = dateToAlti(covidData[covidCase]["date"]);
-    cube.name = covidData[covidCase]["date"];
-    if (cube.position.z >= 0 && cube.position.z <= zSize) {
-      //We shox only the entries that are in the temporal boudaries
-      cube.visible = true;
-    } else {
-      cube.visible = false;
-    }
-    covidCaseGroup.add(cube); // all the cases are added to the group
-  }
-  controller.threeViewer.scene.add(covidCaseGroup); //the group is added to the scene
-}
-
-// Adding the temporal legend
-function addTempoScaleLabel(scaleGroup) {
-  const loader = new THREE.FontLoader();
-  var font = loader.parse(helvetiker);
-
-  var nbrLegends = 6; // Nbr of texts forming the temporal legend
-  for (let i = 0; i <= nbrLegends; i++) {
-    let date = altiToDate((i * zSize) / nbrLegends);
-    const axegeometry = new THREE.TextGeometry(date + "__", {
-      font: font,
-      size: 16,
-      height: 5,
-      curveSegments: 50,
-      bevelEnabled: false,
-      bevelThickness: 5,
-      bevelSize: 1,
-      bevelOffset: 0,
-      bevelSegments: 5
-    });
-
-    var axematerial = new THREE.MeshStandardMaterial({ color: 0x000000 });
-    var axe = new THREE.Mesh(axegeometry, axematerial); //a three js mesh needs a geometry and a material
-    axe.position.x = -1000;
-    axe.position.y = -70;
-    axe.position.z = (i * zSize) / nbrLegends + 3;
-    scaleGroup.add(axe); //all objects have to be added to the threejs scene
-  }
-  controller.threeViewer.scene.add(scaleGroup); //the group is added to the scene
-}
-
-/*_____________________ Initialisation of the 3D modelisation _________________*/
 
 init();
 
@@ -187,10 +88,16 @@ init();
 const dat = require("dat.gui");
 const gui = new dat.GUI();
 
-let dates = { min: 0, max: 100, scale: 300 };
+let dates = { min: 0, max: 100, scale: paramsViz.temporalScale };
 let minController = gui.add(dates, "min", 0, 99, 1);
 let maxController = gui.add(dates, "max", 1, 100, 1);
-let scaleController = gui.add(dates, "scale", 100, 600, 10);
+let scaleController = gui.add(
+  dates,
+  "scale",
+  paramsViz.temporalScale / 2,
+  paramsViz.temporalScale * 2,
+  10
+);
 minController.onFinishChange(function(value) {
   stc.setCurrentDates(dates);
 });
@@ -200,58 +107,6 @@ maxController.onFinishChange(function(value) {
 scaleController.onFinishChange(function(value) {
   stc.setTemporalScale(dates.scale);
 });
-
-function changeTempoScale() {
-  // When we change the temporal zoom, we change the altitude of the covid cases
-  for (var elt in controller.threeViewer.scene.children) {
-    if (
-      controller.threeViewer.scene.children[elt]["name"] == "covidCaseGroup" ||
-      controller.threeViewer.scene.children[elt]["name"].startsWith(
-        "hexCovidCaseGroup"
-      )
-    ) {
-      for (var groupElt in controller.threeViewer.scene.children[elt]
-        .children) {
-        //Selecting elements in covidCaseGroup
-        let cube =
-          controller.threeViewer.scene.children[elt].children[groupElt];
-        cube.position.z = dateToAlti(cube.name);
-        // Setting the visibility depending of the vertical coordinates
-        if (cube.position.z >= 0 && cube.position.z <= zSize) {
-          cube.visible = true;
-        } else {
-          cube.visible = false;
-        }
-      }
-    }
-  }
-  // When we change the temporal zoom, we clear scaleGroup and recreate the texts
-  for (let elt in controller.threeViewer.scene.children) {
-    if (controller.threeViewer.scene.children[elt]["name"] == "scaleGroup") {
-      controller.threeViewer.scene.children[elt].remove(
-        ...controller.threeViewer.scene.children[elt].children
-      );
-      addTempoScaleLabel(controller.threeViewer.scene.children[elt]);
-    }
-  }
-}
-
-gui.domElement.addEventListener("mouseup", changeTempoScale);
-
-/*_____________________________ Raycasting to select an object ___________________________*/
-
-// Position of the mouse at the begining of an event "pointerdown"
-var detaX = 0;
-var deltaY = 0;
-
-function clickPosition() {
-  detaX = mouse.x;
-  deltaY = mouse.y;
-}
-
-function clickOnMap(event) {
-  stc.click(event);
-}
 
 /*_____________________________ rendering funciton ___________________________*/
 function render() {
