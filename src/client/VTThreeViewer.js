@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { ZOOM_RES_L93 } from "./Utils";
 import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils";
+import $ from "jquery";
 
 export const mergedRender = "Merged";
 export const singleRender = "Single";
@@ -35,7 +36,10 @@ export class VTThreeViewer {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(this.renderer.domElement);
     this.renderer.domElement.style.position = "absolute";
-    this.renderer.domElement.style.top = "0px";
+    this.renderer.domElement.style.top = $('#body2').position().top + 'px';
+    this.renderer.domElement.style.left = $('#body2').position().left + 'px';
+    console.log(this.renderer.domElement.style.top, this.renderer.domElement.style.left);
+    console.log($('#body2').position().top, $('#body2').position().left);
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(backgroundColor);
 
