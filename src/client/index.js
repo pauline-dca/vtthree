@@ -9,6 +9,7 @@ import { proj4326, proj3857 } from "./Utils";
 import helvetiker from "../../node_modules/three/examples/fonts/helvetiker_regular.typeface.json";
 import { SpatioTemporalCube } from "./STC";
 import { zoomValuesJacques, zoomValuesMaxime } from "./ZoomValues";
+import $ from "jquery";
 
 //data can be imported like this or read from the data folder
 //import covidData from "../../data/covid_data.json";
@@ -16,10 +17,18 @@ import { zoomValuesJacques, zoomValuesMaxime } from "./ZoomValues";
 import covidDataJacques from "../../data/covid_data_jacques.json";
 import covidDataMaxime from "../../data/data_maxime.json";
 
-const width = window.innerWidth; // this makes the 3D canvas full screen
-const height = window.innerHeight; // this makes the 3D canvas full screen
+
+const width = $('#body2').width(); // this makes the 3D canvas full screen
+const height = $('#body2').height(); // this makes the 3D canvas full screen
 const zSize = 300; //Represent the vertical size on the 3D modelisation. Arbitrary value
 const nbrDaysMax = 100; //Number of days from the first entry that can be displayed
+
+var x = $('#body2').position().left;
+var y = $('#body2').position().top;
+console.log(x,y)
+
+$("#canvas").css("left",x);
+$("#canvas").css("top",y);
 
 const mouse = new THREE.Vector2();
 
