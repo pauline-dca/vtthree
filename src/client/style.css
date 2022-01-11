@@ -1,0 +1,67 @@
+body {
+    margin : 0;
+    padding : 0;
+  }
+
+  
+  .site{
+      display: grid;
+      grid-template-rows: 100px 1fr 200px;
+      grid-template-columns: 2fr 4fr 4fr;
+      grid-gap : 10px;
+      grid-template-areas: 
+          "header header header"
+          "sidebar body body2"
+          "vide graphe1 graphe2";
+      
+  }
+
+  canvas{
+    /*display : grid;*/
+    grid-area: body2;
+}
+  .header{
+      grid-area: header;
+      background-color: #ccc;
+      border : solid 1px #999;
+  }
+  
+  .sidebar{
+      grid-area: sidebar;
+      background-color: rgb(88, 158, 185);
+      border : rgb(1, 51, 71);
+  }
+  
+  .body{
+      grid-area : body;
+      background-color: rgb(88, 185, 112);
+      border : rgb(1, 71, 16);
+  }
+  
+  .body2{
+      grid-area : body2;
+      background-color: rgb(88, 185, 153);
+      border : rgb(1, 71, 44);
+  }
+  
+  .graphe1{
+      grid-area : graphe1;
+      background-color: rgb(211, 104, 104);
+      border : solid 1px rgb(100, 1, 1);
+  }
+  
+  .graphe2{
+      grid-area : graphe2;
+      background-color: rgb(211, 104, 163);
+      border : solid 1px rgb(100, 1, 67);
+  }
+  
+  .vide{
+      grid-area: vide;
+  }
+  
+  .footer{
+      grid-area: footer;
+      background-color: #ccc;
+      border : solid 1px #999;
+  }
