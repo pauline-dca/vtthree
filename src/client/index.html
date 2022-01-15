@@ -3,65 +3,221 @@
   <head>
     <meta charset="utf-8" />
     <title></title>
+    <link rel="stylesheet" href="leaflet/leaflet.css">
     <link rel="stylesheet" media="screen" href="style.css"/>
+    <script type="text/javascript" src="leaflet/leaflet.js"></script>
+	  <script type="text/javascript" src="markercluster-src.js"></script>
+	  <script src="https://d3js.org/d3.v4.js"></script>
+	  <script type="text/javascript" src="jquery.js"></script>
+	  <script type="text/javascript" src="color_scale.js"></script>
   </head>
   <body>
-    <section class="site">
-      <header class="header">
-          Lorem ipsum dolor sit, amet consectetur adipisicing elit. Culpa, consectetur reprehenderit. Tenetur odio, quia eaque sit eum dolor nisi accusamus, rerum velit illo ad cumque, fugiat magni id nam ab?
-      </header>
-      <div id = "body" class="body">
+    <div class="site">
+        <header class="header">
+          Combinaison de visualisations 2D/3D de la distribution spatio-temporelle de cas de Covid-19.
+        </header>
+
+        <div id = "body" class="body">
+            <div id="div_map_container"><div id="divmap"></div></div>
+        </div>
+
+        <div id="body2" class="body2">
+            <div
+          id="infoPanel"
+          class="infoPanel"
+          style="
+        position: absolute;
+        margin-top: 5px;
+        z-index:1;
+        width:150px;
+        height:50px;
+        background-color:white;
+        border: 2px solid #000;
+        text-align: center;
+        /* font-weight: bold; */
+        border-radius: 10px;
+        visibility: hidden;
+        font-family: 'Gill Sans', sans-serif;
+        "
+        >
+          Test
+            </div>
+        </div>
+
+      <div class="sidebar">
+        <div id="div_interface">
           
+          <div id="div_interface_control">
+            <div>Data</div>
+            <input type="file" id="data_file" name="data_file" accept="json">
+            <div>Aggregation radius used to create the glyphs</div>
+            <div class="div_slider_map">
+              <input type="range" id="radius" name="radius" min="5" max="100" value="20" step="1">
+              <p id="radius_label">20</p>
+            </div>
+            <div>Constant value used to create glyphs</div>
+            <div class="div_slider_map">
+              <input type="range" id="cst_area" name="cst_area" min="4" max="100" value="12" step="1">
+              <p id="cst_area_label">12</p>
+            </div>
+            <div id="div_glyph_selectors">				
+              <div id="div_glyph_construction_selectors">
+                <div>Rings construction</div>
+                <div>
+                  <select id="glyph_construction_type">
+                    <option value="area_type">based on area</option>
+                    <option value="radius_type">based on radius</option>
+                  </select>
+                </div>
+              </div>
+              <div id="date_order_selector">
+                <div>
+                  Order of the rings
+                </div>
+                <div>
+                  <select id="date_order">
+                    <option value="inner_old">oldest data at the center</option>
+                    <option value="inner_new">newest data at the center</option>
+                  </select>
+                </div>
+              </div>
+              <div id="selected_graph_max_div">
+                <div>
+                  Max of the selected graph
+                </div>
+                <div>
+                  <select id="selected_graph_max_value">
+                    <option value="relative_max">relative max</option>
+                    <option value="absolute_max">absolute max</option>
+                  </select>
+                </div>
+              </div>
+              <div id="animated_graph">
+                <div>
+                  <input type="button" id="open_animation_menu" value="animation"/>
+                </div>
+                <div>
+                  <input type="button" id="legend_menu_button" value="Legende"/>
+                </div>
+              </div>
+            </div>
+            
+            
+            
+            
+          </div>
+          
+            
+          
+        </div>
+
+        
       </div>
 
-      <div id="body2" class="body2">
-          <div
-        id="infoPanel"
-        class="infoPanel"
-        style="
-      position: absolute;
-      margin-top: 5px;
-      z-index:1;
-      width:150px;
-      height:50px;
-      background-color:white;
-      border: 2px solid #000;
-      text-align: center;
-      /* font-weight: bold; */
-      border-radius: 10px;
-      visibility: hidden;
-      font-family: 'Gill Sans', sans-serif;
-      "
-      >
-        Test
+      <div class="vide">
+          <div id="bar_info"></div>
+      </div>
+
+      <div id = "graphe1" class="graphe1">
+          <div id="div_interface_graphic">
+              <div id="div_interface_graphic_container"></div>
           </div>
       </div>
 
-      <aside class="sidebar">
-          <ul>
-              <li>Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro qui laudantium tempora quasi corporis architecto voluptas quia, delectus distinctio dolores neque natus totam, ullam deleniti aliquam, quidem labore! Architecto, earum.</li>
-              <li>Lorem ipsum, dolor sit amet consectetur adipisicing elit. Corporis dolorem corrupti consequatur nemo minus. Soluta sit, voluptates earum, magni ad quo natus ipsa iste dolore veritatis, maxime voluptatem consequatur mollitia!</li>
-              <li>Lorem, ipsum dolor sit amet consectetur adipisicing elit. Earum, sapiente repudiandae. Consectetur neque nam, ea obcaecati commodi accusamus, est quaerat voluptas error exercitationem corporis ipsum animi aperiam voluptatem et enim!</li>
-              <li>Lorem ipsum dolor, sit amet consectetur adipisicing elit. Assumenda aspernatur quaerat alias, tempora ducimus perspiciatis modi quia cum similique aliquid officia consequatur, quas culpa veniam ut odit numquam porro exercitationem.</li>
-          </ul>
-      </aside>
-
-      <div class="vide">
-
+      <div id = "graphe2" class="graphe2">
+          <div id="div_interface_graphic_selectedcluster">
+              <div id="div_interface_graphic_container_selectedcluster">
+              </div>
+          </div>
       </div>
 
-      <div class="graphe1">
-          Lorem ipsum dolor sit amet consectetur, adipisicing elit. Ipsa aspernatur nobis ducimus ipsum. Reprehenderit rerum fugiat quibusdam nam iste nihil expedita asperiores repellendus quam numquam. Quisquam omnis ipsum neque doloremque.
-      </div>
+    </div>
 
-      <div class="graphe2">
-          Lorem ipsum dolor sit amet consectetur, adipisicing elit. Ipsa aspernatur nobis ducimus ipsum. Reprehenderit rerum fugiat quibusdam nam iste nihil expedita asperiores repellendus quam numquam. Quisquam omnis ipsum neque doloremque.
+    <div id="div_color_legend">
+      <div id="div_color_legend_content">
+      
+        <div id="dataset_date_selectors">
+          <input type="date" id="dataset_start" name="input_dataset_start" value="2021-08-16" min="2019-11-01" max="2022-01-01">
+          <input type="date" id="dataset_end" name="input_dataset_start" value="2021-10-16" min="2019-11-01" max="2022-01-01">
+        </div>
+        
+        <div id="color_selectors">
+          
+          <div id="color_palette_selector">
+            <div>
+              Color palette
+            </div>
+            <div>
+              <select id="color_palette">
+                <option value="uni_hue_blue">uni_hue_blue</option>
+                <option value="uni_hue_red">uni_hue_red</option>
+                <option value="uni_hue_green_blue">uni_hue_green_blue</option>
+                <option value="uni_hue_yellow_red">uni_hue_yellow_red</option>
+                <option value="diverging_blue_white_red">diverging_blue_white_red</option>
+                <option value="diverging_blue_yellow_red">diverging_blue_yellow_red</option>
+                <option value="diverging_blue_yellow_green_red">diverging_blue_yellow_green_red</option>
+                <option value="SM_Maxime_1">SM_Maxime_1</option>
+                <option value="SM_Maxime_2">SM_Maxime_2</option>
+                <option value="SM_Maxime_3">SM_Maxime_3</option>
+                <option value="SM_Maxime_4">SM_Maxime_4</option>
+                <option value="SM_Maxime_5">SM_Maxime_5</option>
+              </select>
+            </div>
+          </div>
+          
+          <div id="color_order_selector">
+            <div>
+              Color order
+            </div>
+            <div>
+              <select id="color_order">
+                <option value="right_order">non-reversed</option>
+                <option value="reversed_order">reversed</option>
+              </select>
+            </div>
+          </div>
+          
+          
+          
+        </div>
+        
+        <div id="number_ofclasses_selectors">
+          <input type="range" id="number_ofclasses" name="number_ofclasses" min="4" max="11" value="7" step="1">
+          <p id="number_ofclasses_label">7 Classes</p>
+        </div>
+        
+        <div id="classes_border_selectors">
+        </div>
+          
+        <div id="color_legend">
+        </div>
+      
       </div>
+    </div>
 
-  </section>
+
+    <div id="animation_div">
+        <div>
+            Animation
+            <select id="animation_activation">
+                <option value="animation_active">active</option>
+                <option value="animation_non_active" selected>inactive</option>
+            </select>
+        </div>
+        <div id='current_date_div' class='control_div'></div>
+        <input id="start" type="button" value="Start">
+        <input id="stop" type="button" value="Stop">
+        <input id="reset" type="button" value="Reset">
+        <div id='anim_div' class='control_div'></div>
+        <input id="IS" type="button" value="Increase Speed">
+        <input id="DS" type="button" value="Decrease Speed">
+        <div id='anim_speed' class='control_div'></div>
+        <div id='slider_div' class='control_div'></div>
+    </div>
     
   
     <div id="map" class="map"></div>
     <script src="./index.js"></script>
+    <script type="text/javascript" src="app.js"></script>
   </body>
 </html>
