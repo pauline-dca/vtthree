@@ -38,8 +38,8 @@ export class VTThreeViewer {
     this.renderer.domElement.style.position = "absolute";
     this.renderer.domElement.style.top = $('#body2').position().top + 'px';
     this.renderer.domElement.style.left = $('#body2').position().left + 'px';
-    console.log(this.renderer.domElement.style.top, this.renderer.domElement.style.left);
-    console.log($('#body2').position().top, $('#body2').position().left);
+    //console.log(this.renderer.domElement.style.top, this.renderer.domElement.style.left);
+    //console.log($('#body2').position().top, $('#body2').position().left);
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(backgroundColor);
 

@@ -263,6 +263,9 @@ function addClusters(clustersGroup) {
 /*_____________________ Code adapted from https://www.datavis.fr/index.php?page=map-hexgrid tutorial_________________*/
 /*_____________________ Aggregation of covid cases on a grid of hexagons ____________________________________________*/
 
+console.log(hexCovidCaseGroup);
+
+
 function hexAgregation(
   hexCovidCaseGroup,
   hexRadius = 50,
@@ -577,6 +580,8 @@ function hexAgregation(
 
   addHexCovidCases(hexCovidCaseGroup, hexRadius);
 }
+console.log(getPointGrid(2));
+
 
 /*_____________________ Initialisation of the 3D modelisation _________________*/
 

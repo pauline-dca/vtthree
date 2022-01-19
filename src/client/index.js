@@ -25,10 +25,10 @@ const nbrDaysMax = 100; //Number of days from the first entry that can be displa
 
 var x = $('#body2').position().left;
 var y = $('#body2').position().top;
-console.log(x,y)
+//console.log(x,y)
 
-$("#canvas").css("left",x);
-$("#canvas").css("top",y);
+//$("#canvas").css("left",x);
+//$("#canvas").css("top",y);
 
 const mouse = new THREE.Vector2();
 
@@ -65,7 +65,8 @@ let params = paramsCovid;
 let controller = null;
 let covidCaseGroup = null;
 let stc = null;
-async function init() {
+export async function init(attr) {
+  if(attr == "data_maxime.json" || attr == "maxime.json"){
   controller = new VTController(
     width,
     height,
@@ -87,9 +88,35 @@ async function init() {
     infoPanel,
     paramsViz.temporalScale
   );
+  }else if(attr == "covid_data_jacques.json" || attr=="sample_data.json"){
+    paramsViz = paramsJacques;
+    controller = new VTController(
+      width,
+      height,
+      params.center, //center coordinates in webmercator
+      params.zoom, //zoom level
+      params.layers, //layers to be rendered as 3D features
+      mergedRender, //render type, merged render more efficient but does not provide access to each feature
+      params.style, //style for the tiles
+      false
+    );
+  
+    let startDataJacques = "2021/08/16";
+    let startDataMaxime = "2021/08/16";
+    stc = new SpatioTemporalCube(
+      paramsViz.data,
+      startDataJacques,
+      controller,
+      paramsViz.zoomValues,
+      infoPanel,
+      paramsViz.temporalScale
+    );
+  }else{
+    return;
+  }
 }
 
-init();
+init("data_maxime.json");
 
 /*_____________________ Managing the temporal scale _________________*/
 

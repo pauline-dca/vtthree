@@ -1,5 +1,6 @@
 import $ from "jquery";
 import {color_scales_palettes} from "./color_scale";
+import {init} from "./index";
 // ------------------- main function ------------------
 
 
@@ -325,8 +326,18 @@ $("#data_file").on("change",function(e) {
 		
 	  };
 	  reader.readAsText(file);
+	  console.log(reader);
+	  console.log(file.name);
 	  
+	  init(file.name);
+	  /*if(file == "data_maxime.json"|| file == "maxime.json"){
+		  init("data_maxime.json")
+	  }else{
+		  init("covid_data_jacques.json")
+	  }*/
 });
+console.log($("#data_file").on)
+
 
 $("#number_ofclasses_label").html(parseInt($("#number_ofclasses").val()) +  " classes");
 $('#classes_border_selectors').html("");	
