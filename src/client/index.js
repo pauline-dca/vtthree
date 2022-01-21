@@ -67,29 +67,45 @@ let covidCaseGroup = null;
 let stc = null;
 export async function init(attr) {
   if(attr == "data_maxime.json" || attr == "maxime.json"){
-  controller = new VTController(
-    width,
-    height,
-    params.center, //center coordinates in webmercator
-    params.zoom, //zoom level
-    params.layers, //layers to be rendered as 3D features
-    mergedRender, //render type, merged render more efficient but does not provide access to each feature
-    params.style, //style for the tiles
-    false
-  );
+    paramsMaxime = {
+      data: covidDataMaxime,
+      zoomValues: zoomValuesMaxime,
+      temporalScale: 50
+    };
+    paramsViz = paramsMaxime;
+    paramsJacques = null;
+    controller = new VTController(
+      width,
+      height,
+      params.center, //center coordinates in webmercator
+      params.zoom, //= 13, //zoom level
+      params.layers, //layers to be rendered as 3D features
+      mergedRender, //render type, merged render more efficient but does not provide access to each feature
+      params.style, //style for the tiles
+      false
+    );
 
-  let startDataJacques = "2021/08/16";
-  let startDataMaxime = "2021/08/16";
-  stc = new SpatioTemporalCube(
-    paramsViz.data,
-    startDataMaxime,
-    controller,
-    paramsViz.zoomValues,
-    infoPanel,
-    paramsViz.temporalScale
-  );
+    let startDataJacques = "2021/08/16";
+    let startDataMaxime = "2021/08/16";
+    stc = new SpatioTemporalCube(
+      paramsViz.data,
+      startDataMaxime,
+      controller,
+      paramsViz.zoomValues,
+      infoPanel,
+      paramsViz.temporalScale
+    );
+    console.log("lancementMaxime");
+    console.log(paramsViz);
+    
   }else if(attr == "covid_data_jacques.json" || attr=="sample_data.json"){
+    paramsJacques = {
+      data: covidDataJacques,
+      zoomValues: zoomValuesJacques,
+      temporalScale: 300
+    };
     paramsViz = paramsJacques;
+    paramsMaxime = null;
     controller = new VTController(
       width,
       height,
@@ -111,6 +127,9 @@ export async function init(attr) {
       infoPanel,
       paramsViz.temporalScale
     );
+    console.log("lancementJAcques");
+    //console.log(paramsViz);
+    
   }else{
     return;
   }
