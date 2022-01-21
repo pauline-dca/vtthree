@@ -5,9 +5,9 @@ import {init} from "./index";
 
 
 //app global variables
-var lat_map = 46.90296;
-var lng_map = 1.90925;
-var zoom_map = 6;
+var lat_map = 48.856614;//46.90296
+var lng_map = 2.3522219;//1.90925
+var zoom_map = 12;//6
 var map_bounds;
 var map;
 
@@ -330,6 +330,11 @@ $("#data_file").on("change",function(e) {
 	  console.log(file.name);
 	  
 	  init(file.name);
+	  if (file.name == "data_maxime.json" || file.name=="maxime.json"){
+		  zoom_map = 13;
+	  }else{
+		  zoom_map = 12;
+	  }
 	  /*if(file == "data_maxime.json"|| file == "maxime.json"){
 		  init("data_maxime.json")
 	  }else{
@@ -595,7 +600,7 @@ function update_map(){
 							return L.divIcon({
 							  html: svg,
 							  className: 'marker-cluster-custom',
-							  iconSize: L.point(40, 40, true),
+							  iconSize: L.point(20, 20, true),
 							});
 						}
 					} else if(selected_glyph_type == "radius_type"){
