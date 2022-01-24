@@ -6,11 +6,10 @@ body {
   
 .site{
     display: grid;
-    grid-template-rows: 100px 1fr 200px;
+    grid-template-rows: 1fr 200px;
     grid-template-columns: 2fr 4fr 4fr;
     grid-gap : 10px;
-    grid-template-areas: 
-        "header header header"
+    grid-template-areas:
         "sidebar body body2"
         "vide graphe1 graphe2";
       
@@ -20,11 +19,12 @@ canvas{
     /*display : grid;*/
     grid-area: body2;
 }
+/*
 .header{
     grid-area: header;
     background-color: #ccc;
     border : solid 1px #999;
-}
+}*/
   
 .sidebar{
     grid-area: sidebar;

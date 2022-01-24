@@ -26,6 +26,8 @@ const nbrDaysMax = 100; //Number of days from the first entry that can be displa
 var x = $('#body2').position().left;
 var y = $('#body2').position().top;
 //console.log(x,y)
+/*$(".ac").css("top",0);
+$(".ac").css("position", absolute);*/
 
 //$("#canvas").css("left",x);
 //$("#canvas").css("top",y);

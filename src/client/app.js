@@ -330,19 +330,19 @@ $("#data_file").on("change",function(e) {
 	  console.log(file.name);
 	  
 	  init(file.name);
-	  if (file.name == "data_maxime.json" || file.name=="maxime.json"){
+	  /*if (file.name == "data_maxime.json" || file.name=="maxime.json"){
 		  zoom_map = 13;
 	  }else{
 		  zoom_map = 12;
-	  }
+	  }/*
 	  /*if(file == "data_maxime.json"|| file == "maxime.json"){
 		  init("data_maxime.json")
 	  }else{
 		  init("covid_data_jacques.json")
 	  }*/
+	  console.log(map.getZoom());
 });
-console.log($("#data_file").on)
-
+console.log($("#data_file").on);
 
 $("#number_ofclasses_label").html(parseInt($("#number_ofclasses").val()) +  " classes");
 $('#classes_border_selectors').html("");	
@@ -517,6 +517,7 @@ function update_map(){
 			zoom_map = map.getZoom();
 		}
 	)
+	console.log(map.getZoom());
 	
 	//adding basemap
 	var stamenToner = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {

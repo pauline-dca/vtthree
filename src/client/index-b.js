@@ -288,6 +288,7 @@ function hexAgregation(
       };
     });
   }
+  console.log(getPointGrid(2));
 
   //creation of the hexagons
   function getHexPoints(mergedPoints) {
@@ -580,7 +581,12 @@ function hexAgregation(
 
   addHexCovidCases(hexCovidCaseGroup, hexRadius);
 }
-console.log(getPointGrid(2));
+console.log(hexAgregation(
+  hexCovidCaseGroup,
+  hexRadius = 50,
+  nbrDaysAgregation = 7,
+  coeffRadius = 2
+));
 
 
 /*_____________________ Initialisation of the 3D modelisation _________________*/
